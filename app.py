@@ -96,7 +96,7 @@ def initialize_app():
     try:
         # Initialize database
         csv_path = 'all_boats_data.csv'
-        json_dir = 'json_boat24'
+        json_dir = 'json_boat24' if os.path.exists('json_boat24') else None  # Make JSON dir optional
         
         if os.path.exists(csv_path):
             boat_db = BoatDatabase(csv_path, json_dir)
