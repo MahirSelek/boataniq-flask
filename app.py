@@ -1587,16 +1587,27 @@ def get_historical_comparison():
     except Exception as e:
         return jsonify({'error': f'Error fetching historical data: {str(e)}'}), 500
 
+# Initialize app when module is imported (for gunicorn/production)
+print("=" * 60)
+print("🚀 Initializing boataniQ App...")
+print("=" * 60)
+initialize_app()
+
+if boat_db is None:
+    print("⚠️  WARNING: Database not initialized. Some features may not work.")
+else:
+    print(f"✅ Database ready with {len(boat_db.boats_df)} boats")
+
+if ai_analyzer is None:
+    print("⚠️  WARNING: AI analyzer not initialized. Image analysis will not work.")
+    print("   Please set GCP_CREDENTIALS_JSON or GEMINI_API_KEY environment variable.")
+else:
+    print("✅ AI analyzer ready")
+
+print("=" * 60)
+print("✅ Application initialization complete!")
+print("=" * 60)
+
 if __name__ == '__main__':
-    print("Initializing boataniQ App...")
-    initialize_app()
-    
-    if boat_db is None:
-        print("Warning: Database not initialized. Some features may not work.")
-    
-    if ai_analyzer is None:
-        print("Warning: AI analyzer not initialized. Image analysis will not work.")
-        print("Please set GEMINI_API_KEY environment variable.")
-    
-    print("Starting Flask application...")
+    print("Starting Flask application in development mode...")
     app.run(debug=True, host='0.0.0.0', port=5001)
