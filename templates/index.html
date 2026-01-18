@@ -66,7 +66,7 @@
                         
                         <!-- Analyze Button -->
                         <div class="text-center">
-                            <button id="analyzeBtn" class="btn btn-primary btn-lg px-5" onclick="analyzeImage()">
+                            <button id="analyzeBtn" class="btn btn-primary btn-lg px-5" onclick="analyzeImage()" disabled>
                                 <i class="fas fa-search me-2"></i>Analyze Boat
                             </button>
                         </div>
@@ -925,6 +925,19 @@
     color: var(--text-dark);
     background-color: var(--soft-blue);
 }
+
+/* Disabled button styling */
+#analyzeBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed !important;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+}
+
+#analyzeBtn:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
 </style>
 
 <script>
@@ -1046,10 +1059,12 @@ function startNewAnalysis() {
     // Reset analyze button
     const analyzeBtn = document.getElementById('analyzeBtn');
     if (analyzeBtn) {
-        analyzeBtn.disabled = false;
+        analyzeBtn.disabled = true; // Disabled until file is selected
         analyzeBtn.style.opacity = '1';
         analyzeBtn.style.cursor = 'pointer';
         analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i>Analyze Boat';
+        analyzeBtn.classList.remove('btn-secondary');
+        analyzeBtn.classList.add('btn-primary');
     }
     
     // Hide New Analysis button
@@ -1096,6 +1111,15 @@ function analyzeImage() {
     console.log('🚀 [MAIN] Starting boat analysis...');
     
     const fileInput = document.getElementById('fileInput');
+    if (!fileInput) {
+        console.error('❌ [MAIN] File input element not found');
+        showErrorModal({
+            error: 'File input not found',
+            recommendation: 'Please refresh the page and try again.'
+        });
+        return;
+    }
+    
     const file = fileInput.files[0];
     
     console.log('📁 [MAIN] File input:', fileInput);
@@ -1105,7 +1129,17 @@ function analyzeImage() {
         console.log('❌ [MAIN] No file selected');
         showErrorModal({
             error: 'No image selected',
-            recommendation: 'Please select a boat image file to analyze.'
+            recommendation: 'Please select a boat image file first, then click "Analyze Boat".'
+        });
+        return;
+    }
+    
+    // Double-check file is valid
+    if (!file.type.startsWith('image/')) {
+        console.log('❌ [MAIN] Invalid file type:', file.type);
+        showErrorModal({
+            error: 'Invalid file type',
+            recommendation: 'Please select a valid image file (JPG, PNG, GIF, etc.).'
         });
         return;
     }
@@ -1598,31 +1632,84 @@ function initializeFileUpload() {
     
     const fileInput = document.getElementById('fileInput');
     const fileName = document.getElementById('fileName');
+    const analyzeBtn = document.getElementById('analyzeBtn');
     
     console.log('🔧 [MAIN] Elements found:', {
         fileInput: !!fileInput,
-        fileName: !!fileName
+        fileName: !!fileName,
+        analyzeBtn: !!analyzeBtn
     });
     
     // File input change handler
-    fileInput.addEventListener('change', function(e) {
-        console.log('📁 [MAIN] File input changed');
-        const file = e.target.files[0];
-        console.log('📁 [MAIN] Selected file:', file);
-        
-        if (file) {
-            console.log('✅ [MAIN] File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
-            fileName.innerHTML = `
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle me-2"></i>
-                    File Selected: ${file.name}
-                </div>
-            `;
-            fileName.style.display = 'block';
-        } else {
-            console.log('❌ [MAIN] No file selected');
-        }
-    });
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            console.log('📁 [MAIN] File input changed');
+            const file = e.target.files[0];
+            console.log('📁 [MAIN] Selected file:', file);
+            
+            if (file) {
+                console.log('✅ [MAIN] File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
+                
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    console.log('❌ [MAIN] Invalid file type:', file.type);
+                    fileName.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Invalid file type. Please select an image file.
+                        </div>
+                    `;
+                    fileName.style.display = 'block';
+                    if (analyzeBtn) {
+                        analyzeBtn.disabled = true;
+                    }
+                    return;
+                }
+                
+                // Validate file size (max 10MB)
+                const maxSize = 10 * 1024 * 1024; // 10MB
+                if (file.size > maxSize) {
+                    console.log('❌ [MAIN] File too large:', file.size);
+                    fileName.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            File too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 10MB.
+                        </div>
+                    `;
+                    fileName.style.display = 'block';
+                    if (analyzeBtn) {
+                        analyzeBtn.disabled = true;
+                    }
+                    return;
+                }
+                
+                // Valid file selected
+                fileName.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        File Selected: <strong>${file.name}</strong> (${(file.size / 1024).toFixed(2)}KB)
+                    </div>
+                `;
+                fileName.style.display = 'block';
+                
+                // Enable analyze button
+                if (analyzeBtn) {
+                    analyzeBtn.disabled = false;
+                    analyzeBtn.classList.remove('btn-secondary');
+                    analyzeBtn.classList.add('btn-primary');
+                }
+            } else {
+                console.log('❌ [MAIN] No file selected');
+                fileName.style.display = 'none';
+                fileName.textContent = '';
+                
+                // Disable analyze button
+                if (analyzeBtn) {
+                    analyzeBtn.disabled = true;
+                }
+            }
+        });
+    }
 }
 
 // Text Search Functions
