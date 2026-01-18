@@ -1,0 +1,534 @@
+{% extends "base.html" %}
+
+{% block title %}Data Insights - BoataniQ{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section" style="padding: 3rem 0;">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center">
+                <h1 class="display-4 fw-bold mb-3">
+                    <i class="fas fa-chart-line me-3"></i>Market Data Insights
+                </h1>
+                <p class="lead">Comprehensive analytics and market intelligence from our boat database</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Executive Summary Cards -->
+<section class="py-5">
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2 class="mb-4">
+                    <i class="fas fa-tachometer-alt me-2 text-primary"></i>Executive Summary
+                </h2>
+            </div>
+        </div>
+        
+        <div class="row g-4" id="summaryCards">
+            <!-- Cards will be populated by JavaScript -->
+            <div class="col-md-3">
+                <div class="card shadow-lg border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Charts Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <!-- Price Distribution -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-primary text-white py-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-euro-sign me-2"></i>Price Distribution
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="priceDistributionChart" style="height: 400px;">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Year Distribution -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-success text-white py-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-calendar-alt me-2"></i>Year Distribution
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="yearDistributionChart" style="height: 400px;">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-success" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Brand Statistics -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-info text-white py-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-tags me-2"></i>Top Brands Analysis
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="brandStatsChart" style="height: 500px;">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-info" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Size Distribution -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-warning text-dark py-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-ruler-combined me-2"></i>Boat Size Distribution
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="sizeDistributionChart" style="height: 400px;">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-warning" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Market Trends -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-danger text-white py-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-chart-area me-2"></i>Market Trends Over Time
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="marketTrendsChart" style="height: 500px;">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-danger" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<!-- Plotly.js for professional charts -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<script>
+// Format number with commas
+function formatNumber(num) {
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toLocaleString();
+}
+
+// Format currency
+function formatCurrency(num) {
+    if (!num) return 'N/A';
+    if (num >= 1000000) {
+        return '€' + (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return '€' + (num / 1000).toFixed(0) + 'K';
+    }
+    return '€' + num.toLocaleString();
+}
+
+// Load Executive Summary
+async function loadSummary() {
+    try {
+        const response = await fetch('/api/data-insights/summary');
+        const data = await response.json();
+        
+        if (data.success) {
+            const summary = data.summary;
+            const cardsContainer = document.getElementById('summaryCards');
+            
+            cardsContainer.innerHTML = `
+                <div class="col-md-3">
+                    <div class="card shadow-lg border-0 h-100 border-primary">
+                        <div class="card-body text-center">
+                            <i class="fas fa-ship fa-3x text-primary mb-3"></i>
+                            <h3 class="display-5 fw-bold">${formatNumber(summary.total_boats)}</h3>
+                            <p class="text-muted mb-0">Total Boats</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-lg border-0 h-100 border-success">
+                        <div class="card-body text-center">
+                            <i class="fas fa-euro-sign fa-3x text-success mb-3"></i>
+                            <h3 class="display-5 fw-bold">${formatCurrency(summary.price_stats.median)}</h3>
+                            <p class="text-muted mb-0">Median Price</p>
+                            <small class="text-muted">${formatNumber(summary.price_stats.count)} with prices</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-lg border-0 h-100 border-info">
+                        <div class="card-body text-center">
+                            <i class="fas fa-calendar fa-3x text-info mb-3"></i>
+                            <h3 class="display-5 fw-bold">${summary.year_stats.median || 'N/A'}</h3>
+                            <p class="text-muted mb-0">Median Year</p>
+                            <small class="text-muted">Range: ${summary.year_stats.min || 'N/A'} - ${summary.year_stats.max || 'N/A'}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-lg border-0 h-100 border-warning">
+                        <div class="card-body text-center">
+                            <i class="fas fa-ruler fa-3x text-warning mb-3"></i>
+                            <h3 class="display-5 fw-bold">${summary.length_stats.median ? summary.length_stats.median.toFixed(1) + 'm' : 'N/A'}</h3>
+                            <p class="text-muted mb-0">Median Length</p>
+                            <small class="text-muted">Avg: ${summary.length_stats.mean ? summary.length_stats.mean.toFixed(1) + 'm' : 'N/A'}</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading summary:', error);
+    }
+}
+
+// Load Price Distribution Chart
+async function loadPriceDistribution() {
+    try {
+        const response = await fetch('/api/data-insights/price-distribution');
+        const data = await response.json();
+        
+        if (data.success && data.distribution) {
+            const categories = Object.keys(data.distribution);
+            const values = Object.values(data.distribution);
+            
+            const trace = {
+                x: categories,
+                y: values,
+                type: 'bar',
+                marker: {
+                    color: 'rgba(0, 119, 190, 0.8)',
+                    line: {
+                        color: 'rgba(0, 119, 190, 1.0)',
+                        width: 1
+                    }
+                },
+                text: values.map(v => formatNumber(v)),
+                textposition: 'auto'
+            };
+            
+            const layout = {
+                title: {
+                    text: 'Boat Price Distribution',
+                    font: { size: 18 }
+                },
+                xaxis: {
+                    title: 'Price Range (EUR)',
+                    tickangle: -45
+                },
+                yaxis: {
+                    title: 'Number of Boats'
+                },
+                hovermode: 'closest',
+                margin: { b: 100 }
+            };
+            
+            // Clear loading spinner before rendering
+            document.getElementById('priceDistributionChart').innerHTML = '';
+            Plotly.newPlot('priceDistributionChart', [trace], layout, {responsive: true});
+        }
+    } catch (error) {
+        console.error('Error loading price distribution:', error);
+        document.getElementById('priceDistributionChart').innerHTML = '<p class="text-danger">Error loading chart</p>';
+    }
+}
+
+// Load Year Distribution Chart
+async function loadYearDistribution() {
+    try {
+        const response = await fetch('/api/data-insights/year-distribution');
+        const data = await response.json();
+        
+        if (data.success && data.recent_years) {
+            const years = Object.keys(data.recent_years).map(Number).sort();
+            const counts = years.map(y => data.recent_years[y]);
+            
+            const trace = {
+                x: years,
+                y: counts,
+                type: 'bar',
+                marker: {
+                    color: 'rgba(5, 150, 105, 0.8)',
+                    line: {
+                        color: 'rgba(5, 150, 105, 1.0)',
+                        width: 1
+                    }
+                },
+                text: counts.map(c => formatNumber(c)),
+                textposition: 'auto'
+            };
+            
+            const layout = {
+                title: {
+                    text: 'Boat Year Distribution (Last 20 Years)',
+                    font: { size: 18 }
+                },
+                xaxis: {
+                    title: 'Year',
+                    dtick: 1
+                },
+                yaxis: {
+                    title: 'Number of Boats'
+                },
+                hovermode: 'closest'
+            };
+            
+            // Clear loading spinner before rendering
+            document.getElementById('yearDistributionChart').innerHTML = '';
+            Plotly.newPlot('yearDistributionChart', [trace], layout, {responsive: true});
+        }
+    } catch (error) {
+        console.error('Error loading year distribution:', error);
+        document.getElementById('yearDistributionChart').innerHTML = '<p class="text-danger">Error loading chart</p>';
+    }
+}
+
+// Load Brand Statistics Chart
+async function loadBrandStats() {
+    try {
+        const response = await fetch('/api/data-insights/brand-stats');
+        const data = await response.json();
+        
+        if (data.success && data.brand_counts) {
+            const brands = Object.keys(data.brand_counts);
+            const counts = Object.values(data.brand_counts);
+            
+            // Create horizontal bar chart
+            const trace = {
+                x: counts,
+                y: brands,
+                type: 'bar',
+                orientation: 'h',
+                marker: {
+                    color: 'rgba(14, 165, 233, 0.8)',
+                    line: {
+                        color: 'rgba(14, 165, 233, 1.0)',
+                        width: 1
+                    }
+                },
+                text: counts.map(c => formatNumber(c)),
+                textposition: 'auto'
+            };
+            
+            const layout = {
+                title: {
+                    text: 'Top 20 Brands by Listings Count',
+                    font: { size: 18 }
+                },
+                xaxis: {
+                    title: 'Number of Listings'
+                },
+                yaxis: {
+                    title: 'Brand',
+                    autorange: 'reversed'
+                },
+                hovermode: 'closest',
+                margin: { l: 150 }
+            };
+            
+            // Clear loading spinner before rendering
+            document.getElementById('brandStatsChart').innerHTML = '';
+            Plotly.newPlot('brandStatsChart', [trace], layout, {responsive: true});
+        }
+    } catch (error) {
+        console.error('Error loading brand stats:', error);
+        document.getElementById('brandStatsChart').innerHTML = '<p class="text-danger">Error loading chart</p>';
+    }
+}
+
+// Load Size Distribution Chart
+async function loadSizeDistribution() {
+    try {
+        const response = await fetch('/api/data-insights/size-distribution');
+        const data = await response.json();
+        
+        if (data.success && data.distribution) {
+            const categories = Object.keys(data.distribution);
+            const values = Object.values(data.distribution);
+            
+            const trace = {
+                x: categories,
+                y: values,
+                type: 'bar',
+                marker: {
+                    color: 'rgba(249, 115, 22, 0.8)',
+                    line: {
+                        color: 'rgba(249, 115, 22, 1.0)',
+                        width: 1
+                    }
+                },
+                text: values.map(v => formatNumber(v)),
+                textposition: 'auto'
+            };
+            
+            const layout = {
+                title: {
+                    text: 'Boat Length Distribution',
+                    font: { size: 18 }
+                },
+                xaxis: {
+                    title: 'Length Category'
+                },
+                yaxis: {
+                    title: 'Number of Boats'
+                },
+                hovermode: 'closest'
+            };
+            
+            // Clear loading spinner before rendering
+            document.getElementById('sizeDistributionChart').innerHTML = '';
+            Plotly.newPlot('sizeDistributionChart', [trace], layout, {responsive: true});
+        }
+    } catch (error) {
+        console.error('Error loading size distribution:', error);
+        document.getElementById('sizeDistributionChart').innerHTML = '<p class="text-danger">Error loading chart</p>';
+    }
+}
+
+// Load Market Trends Chart
+async function loadMarketTrends() {
+    try {
+        const response = await fetch('/api/data-insights/market-trends');
+        const data = await response.json();
+        
+        if (data.success && data.trends && data.trends.years.length > 0) {
+            const trends = data.trends;
+            
+            // Create multiple traces
+            const trace1 = {
+                x: trends.years,
+                y: trends.avg_prices.map(p => p / 1000), // Convert to thousands
+                name: 'Average Price (€K)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: 'rgba(239, 68, 68, 1.0)', width: 3 },
+                marker: { size: 8 }
+            };
+            
+            const trace2 = {
+                x: trends.years,
+                y: trends.median_prices.map(p => p / 1000), // Convert to thousands
+                name: 'Median Price (€K)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: 'rgba(239, 68, 68, 0.6)', width: 2, dash: 'dash' },
+                marker: { size: 6 }
+            };
+            
+            const trace3 = {
+                x: trends.years,
+                y: trends.counts,
+                name: 'Listings Count',
+                type: 'scatter',
+                mode: 'lines+markers',
+                yaxis: 'y2',
+                line: { color: 'rgba(14, 165, 233, 0.6)', width: 2 },
+                marker: { size: 6 }
+            };
+            
+            const layout = {
+                title: {
+                    text: 'Market Trends: Price and Listings Over Time',
+                    font: { size: 18 }
+                },
+                xaxis: {
+                    title: 'Year'
+                },
+                yaxis: {
+                    title: 'Price (€ Thousands)',
+                    side: 'left'
+                },
+                yaxis2: {
+                    title: 'Number of Listings',
+                    overlaying: 'y',
+                    side: 'right'
+                },
+                hovermode: 'x unified',
+                legend: {
+                    x: 0,
+                    y: 1
+                }
+            };
+            
+            // Clear loading spinner before rendering
+            document.getElementById('marketTrendsChart').innerHTML = '';
+            Plotly.newPlot('marketTrendsChart', [trace1, trace2, trace3], layout, {responsive: true});
+        }
+    } catch (error) {
+        console.error('Error loading market trends:', error);
+        document.getElementById('marketTrendsChart').innerHTML = '<p class="text-danger">Error loading chart</p>';
+    }
+}
+
+// Load all data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadSummary();
+    loadPriceDistribution();
+    loadYearDistribution();
+    loadBrandStats();
+    loadSizeDistribution();
+    loadMarketTrends();
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,583 @@
+{% extends "base.html" %}
+
+{% block title %}Investment Comparison - BoataniQ{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section" style="padding: 3rem 0;">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center">
+                <h1 class="display-4 fw-bold mb-3">
+                    <i class="fas fa-chart-line me-3"></i>Boat Investment vs Financial Markets
+                </h1>
+                <p class="lead">Compare boat market performance with S&P 500, Nasdaq, and BIST 100</p>
+                <p class="text-muted">Discover why boat investments can be a profitable alternative to traditional stock markets</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Key Metrics Cards -->
+<section class="py-5">
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2 class="mb-4">
+                    <i class="fas fa-tachometer-alt me-2 text-primary"></i>Performance Comparison
+                </h2>
+            </div>
+        </div>
+        
+        <div class="row g-4" id="comparisonCards">
+            <!-- Cards will be populated by JavaScript -->
+            <div class="col-md-3">
+                <div class="card shadow-lg border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Performance Comparison Chart -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-primary text-white py-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-chart-area me-2"></i>Returns Comparison
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="returnsComparisonChart" style="height: 500px;">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Historical Price Comparison -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-success text-white py-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-chart-line me-2"></i>Historical Price Trends
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="indexSelector" class="form-label">Select Financial Index:</label>
+                            <select id="indexSelector" class="form-select" onchange="loadHistoricalComparison()">
+                                <option value="SP500">S&P 500</option>
+                                <option value="NASDAQ">Nasdaq Composite</option>
+                                <option value="BIST100">BIST 100</option>
+                            </select>
+                        </div>
+                        <div id="historicalComparisonChart" style="height: 500px;">
+                            <div class="text-center py-5">
+                                <div class="spinner-border text-success" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Detailed Metrics Table -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-info text-white py-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-table me-2"></i>Detailed Performance Metrics
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="metricsTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Asset Class</th>
+                                        <th>Total Return (%)</th>
+                                        <th>Annualized Return (%)</th>
+                                        <th>Volatility (%)</th>
+                                        <th>Max Drawdown (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="metricsTableBody">
+                                    <tr>
+                                        <td colspan="5" class="text-center">
+                                            <div class="spinner-border text-info" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Investment Insights -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card shadow-lg border-0 border-warning">
+                    <div class="card-header bg-warning text-dark py-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-lightbulb me-2"></i>Investment Insights
+                        </h4>
+                    </div>
+                    <div class="card-body" id="insightsContent">
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-warning" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<!-- Plotly.js for professional charts -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<script>
+// Format number with commas
+function formatNumber(num) {
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toLocaleString();
+}
+
+// Format percentage
+function formatPercent(num) {
+    if (num === null || num === undefined) return 'N/A';
+    const sign = num >= 0 ? '+' : '';
+    return sign + num.toFixed(2) + '%';
+}
+
+// Format currency
+function formatCurrency(num) {
+    if (!num) return 'N/A';
+    if (num >= 1000000) {
+        return '€' + (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return '€' + (num / 1000).toFixed(0) + 'K';
+    }
+    return '€' + num.toLocaleString();
+}
+
+// Load comparison data
+async function loadComparison() {
+    try {
+        const response = await fetch('/api/investment-comparison/comparison?period=5y');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayComparisonCards(data.data);
+            displayReturnsChart(data.data);
+            displayMetricsTable(data.data);
+            displayInsights(data.data);
+        } else {
+            console.error('Error loading comparison:', data.error);
+            showError('Failed to load comparison data: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error loading comparison:', error);
+        showError('Failed to load comparison data. Please try again.');
+    }
+}
+
+// Display comparison cards
+function displayComparisonCards(data) {
+    const boatMarket = data.boat_market;
+    const financialIndices = data.financial_indices;
+    const comparison = data.comparison_metrics;
+    
+    if (boatMarket.error || !comparison) {
+        document.getElementById('comparisonCards').innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Insufficient data for comparison. Please ensure boat data is available.
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    const boatReturn = comparison.boat_return_pct || 0;
+    const avgFinancialReturn = comparison.avg_financial_return_pct || 0;
+    const outperformance = comparison.outperformance_pct || 0;
+    const boatAnnualized = comparison.boat_annualized_return_pct || 0;
+    
+    document.getElementById('comparisonCards').innerHTML = `
+        <div class="col-md-3">
+            <div class="card shadow-lg border-0 h-100 border-primary">
+                <div class="card-body text-center">
+                    <i class="fas fa-ship fa-3x text-primary mb-3"></i>
+                    <h3 class="display-5 fw-bold ${boatReturn >= 0 ? 'text-success' : 'text-danger'}">
+                        ${formatPercent(boatReturn)}
+                    </h3>
+                    <p class="text-muted mb-0">Boat Market Return</p>
+                    <small class="text-muted">${formatPercent(boatAnnualized)} annualized</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-lg border-0 h-100 border-info">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-3x text-info mb-3"></i>
+                    <h3 class="display-5 fw-bold ${avgFinancialReturn >= 0 ? 'text-success' : 'text-danger'}">
+                        ${formatPercent(avgFinancialReturn)}
+                    </h3>
+                    <p class="text-muted mb-0">Avg Financial Markets</p>
+                    <small class="text-muted">S&P 500, Nasdaq, BIST 100</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-lg border-0 h-100 ${outperformance >= 0 ? 'border-success' : 'border-danger'}">
+                <div class="card-body text-center">
+                    <i class="fas fa-trophy fa-3x ${outperformance >= 0 ? 'text-success' : 'text-danger'} mb-3"></i>
+                    <h3 class="display-5 fw-bold ${outperformance >= 0 ? 'text-success' : 'text-danger'}">
+                        ${formatPercent(outperformance)}
+                    </h3>
+                    <p class="text-muted mb-0">Outperformance</p>
+                    <small class="text-muted">Boats vs Financial Markets</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-lg border-0 h-100 border-warning">
+                <div class="card-body text-center">
+                    <i class="fas fa-percentage fa-3x text-warning mb-3"></i>
+                    <h3 class="display-5 fw-bold">
+                        ${formatPercent(comparison.boat_volatility_pct || 0)}
+                    </h3>
+                    <p class="text-muted mb-0">Boat Market Volatility</p>
+                    <small class="text-muted">Price stability indicator</small>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Display returns comparison chart
+function displayReturnsChart(data) {
+    const boatMarket = data.boat_market;
+    const financialIndices = data.financial_indices;
+    
+    if (boatMarket.error) {
+        document.getElementById('returnsComparisonChart').innerHTML = 
+            '<p class="text-danger">Error: ' + boatMarket.error + '</p>';
+        return;
+    }
+    
+    const categories = ['Boat Market'];
+    const returns = [boatMarket.total_return_pct || 0];
+    const annualized = [boatMarket.annualized_return_pct || 0];
+    
+    // Add financial indices
+    for (const [indexName, indexData] of Object.entries(financialIndices.indices)) {
+        if (!indexData.error) {
+            categories.push(indexName);
+            returns.push(indexData.total_return_pct || 0);
+            annualized.push(indexData.annualized_return_pct || 0);
+        }
+    }
+    
+    const trace1 = {
+        x: categories,
+        y: returns,
+        name: 'Total Return (%)',
+        type: 'bar',
+        marker: {
+            color: returns.map(r => r >= 0 ? 'rgba(5, 150, 105, 0.8)' : 'rgba(239, 68, 68, 0.8)')
+        },
+        text: returns.map(r => formatPercent(r)),
+        textposition: 'auto'
+    };
+    
+    const trace2 = {
+        x: categories,
+        y: annualized,
+        name: 'Annualized Return (%)',
+        type: 'bar',
+        marker: {
+            color: annualized.map(r => r >= 0 ? 'rgba(14, 165, 233, 0.8)' : 'rgba(239, 68, 68, 0.8)')
+        },
+        text: annualized.map(r => formatPercent(r)),
+        textposition: 'auto'
+    };
+    
+    const layout = {
+        title: {
+            text: 'Investment Returns Comparison',
+            font: { size: 18 }
+        },
+        xaxis: {
+            title: 'Asset Class'
+        },
+        yaxis: {
+            title: 'Return (%)'
+        },
+        barmode: 'group',
+        hovermode: 'closest',
+        legend: {
+            x: 0,
+            y: 1
+        }
+    };
+    
+    document.getElementById('returnsComparisonChart').innerHTML = '';
+    Plotly.newPlot('returnsComparisonChart', [trace1, trace2], layout, {responsive: true});
+}
+
+// Display metrics table
+function displayMetricsTable(data) {
+    const boatMarket = data.boat_market;
+    const financialIndices = data.financial_indices;
+    
+    let tableBody = '';
+    
+    // Add boat market row
+    if (!boatMarket.error) {
+        tableBody += `
+            <tr class="table-primary">
+                <td><strong><i class="fas fa-ship me-2"></i>Boat Market</i></td>
+                <td>${formatPercent(boatMarket.total_return_pct)}</td>
+                <td>${formatPercent(boatMarket.annualized_return_pct)}</td>
+                <td>${formatPercent(boatMarket.volatility_pct)}</td>
+                <td>N/A</td>
+            </tr>
+        `;
+    }
+    
+    // Add financial indices rows
+    for (const [indexName, indexData] of Object.entries(financialIndices.indices)) {
+        if (!indexData.error) {
+            tableBody += `
+                <tr>
+                    <td><i class="fas fa-chart-line me-2"></i>${indexName}</td>
+                    <td>${formatPercent(indexData.total_return_pct)}</td>
+                    <td>${formatPercent(indexData.annualized_return_pct)}</td>
+                    <td>${formatPercent(indexData.volatility_pct)}</td>
+                    <td>${formatPercent(indexData.max_drawdown_pct)}</td>
+                </tr>
+            `;
+        }
+    }
+    
+    if (!tableBody) {
+        tableBody = '<tr><td colspan="5" class="text-center text-muted">No data available</td></tr>';
+    }
+    
+    document.getElementById('metricsTableBody').innerHTML = tableBody;
+}
+
+// Display insights
+function displayInsights(data) {
+    const comparison = data.comparison_metrics;
+    const boatMarket = data.boat_market;
+    
+    if (!comparison || boatMarket.error) {
+        document.getElementById('insightsContent').innerHTML = `
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Insufficient data to generate insights.
+            </div>
+        `;
+        return;
+    }
+    
+    const outperformance = comparison.outperformance_pct || 0;
+    const boatReturn = comparison.boat_return_pct || 0;
+    const boatVolatility = comparison.boat_volatility_pct || 0;
+    
+    let insights = '';
+    
+    if (outperformance > 0) {
+        insights += `
+            <div class="alert alert-success">
+                <h5><i class="fas fa-check-circle me-2"></i>Boats Outperformed Financial Markets</h5>
+                <p class="mb-0">
+                    The boat market has outperformed the average financial markets by 
+                    <strong>${formatPercent(outperformance)}</strong> over the analyzed period. 
+                    This demonstrates that boat investments can be a profitable alternative to traditional stock market investments.
+                </p>
+            </div>
+        `;
+    } else {
+        insights += `
+            <div class="alert alert-info">
+                <h5><i class="fas fa-info-circle me-2"></i>Market Performance Analysis</h5>
+                <p class="mb-0">
+                    While boats showed a return of <strong>${formatPercent(boatReturn)}</strong>, 
+                    financial markets averaged <strong>${formatPercent(comparison.avg_financial_return_pct)}</strong>. 
+                    However, boats offer unique advantages including tangible asset ownership and potential for personal use.
+                </p>
+            </div>
+        `;
+    }
+    
+    insights += `
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h6><i class="fas fa-chart-bar me-2 text-primary"></i>Key Advantages of Boat Investment</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success me-2"></i>Tangible asset with intrinsic value</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Potential for personal enjoyment and use</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Diversification from traditional markets</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Lower correlation with stock market volatility</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Considerations</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-info-circle text-info me-2"></i>Maintenance and storage costs</li>
+                    <li><i class="fas fa-info-circle text-info me-2"></i>Market liquidity considerations</li>
+                    <li><i class="fas fa-info-circle text-info me-2"></i>Market volatility: ${formatPercent(boatVolatility)}</li>
+                    <li><i class="fas fa-info-circle text-info me-2"></i>Professional valuation recommended</li>
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('insightsContent').innerHTML = insights;
+}
+
+// Load historical comparison chart
+async function loadHistoricalComparison() {
+    const indexSelector = document.getElementById('indexSelector');
+    const selectedIndex = indexSelector.value;
+    
+    try {
+        const response = await fetch(`/api/investment-comparison/historical?period=5y&index=${selectedIndex}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            displayHistoricalChart(data.data);
+        } else {
+            console.error('Error loading historical data:', data.error);
+        }
+    } catch (error) {
+        console.error('Error loading historical comparison:', error);
+    }
+}
+
+// Display historical comparison chart
+function displayHistoricalChart(data) {
+    const financialData = data.financial_index.data;
+    const boatData = data.boat_market.data;
+    
+    if (!financialData.length || !boatData.length) {
+        document.getElementById('historicalComparisonChart').innerHTML = 
+            '<p class="text-danger">Insufficient data for historical comparison</p>';
+        return;
+    }
+    
+    // Normalize financial data to percentage change from start
+    const financialStart = financialData[0].price;
+    const financialNormalized = financialData.map(d => ({
+        date: d.date,
+        year: d.year,
+        value: ((d.price - financialStart) / financialStart) * 100
+    }));
+    
+    // Normalize boat data to percentage change from start
+    const boatStart = boatData[0].avg_price;
+    const boatNormalized = boatData.map(d => ({
+        year: d.year,
+        value: ((d.avg_price - boatStart) / boatStart) * 100
+    }));
+    
+    // Create traces
+    const trace1 = {
+        x: financialNormalized.map(d => d.date),
+        y: financialNormalized.map(d => d.value),
+        name: data.financial_index.name,
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: 'rgba(14, 165, 233, 1.0)', width: 2 },
+        marker: { size: 4 }
+    };
+    
+    const trace2 = {
+        x: boatNormalized.map(d => d.year.toString()),
+        y: boatNormalized.map(d => d.value),
+        name: 'Boat Market (Average Price)',
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: 'rgba(5, 150, 105, 1.0)', width: 2 },
+        marker: { size: 6 }
+    };
+    
+    const layout = {
+        title: {
+            text: `Historical Price Trends: ${data.financial_index.name} vs Boat Market`,
+            font: { size: 18 }
+        },
+        xaxis: {
+            title: 'Time'
+        },
+        yaxis: {
+            title: 'Price Change (%)',
+            tickformat: '.1f'
+        },
+        hovermode: 'x unified',
+        legend: {
+            x: 0,
+            y: 1
+        }
+    };
+    
+    document.getElementById('historicalComparisonChart').innerHTML = '';
+    Plotly.newPlot('historicalComparisonChart', [trace1, trace2], layout, {responsive: true});
+}
+
+// Show error message
+function showError(message) {
+    const cardsContainer = document.getElementById('comparisonCards');
+    cardsContainer.innerHTML = `
+        <div class="col-12">
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                ${message}
+            </div>
+        </div>
+    `;
+}
+
+// Load all data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadComparison();
+    loadHistoricalComparison();
+});
+</script>
+{% endblock %}
+

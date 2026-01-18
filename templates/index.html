@@ -1,0 +1,2054 @@
+{% extends "base.html" %}
+
+{% block title %}BoataniQ - AI-Powered Boat Recognition{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <div class="hero-brand-container">
+                    <div class="hero-logo-container">
+                        <img src="/static/logo.png" alt="boataniQ Logo" class="hero-logo">
+                    </div>
+                    <h1 class="hero-title">BoataniQ</h1>
+                    <p class="hero-subtitle">
+                        Upload a boat photo and let our advanced AI identify the boat type, brand, model, year, and provide detailed analysis using our comprehensive database of 30,000+ boats.
+                    </p>
+                </div>
+                
+                <div class="hero-features">
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <span class="feature-text">AI-Powered</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <span class="feature-text">30K+ Boats</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="fas fa-microscope"></i>
+                        </div>
+                        <span class="feature-text">Deep Analysis</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- Upload Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-lg border-0">
+                    <div class="card-body p-5">
+                        <h2 class="text-center mb-4">
+                            <i class="fas fa-camera me-2 text-primary"></i>Upload Boat Photo
+                        </h2>
+                        
+                        <!-- File Upload -->
+                        <div class="mb-3">
+                            <label for="fileInput" class="form-label">Select Boat Image:</label>
+                            <input type="file" class="form-control" id="fileInput" accept="image/*">
+                        </div>
+                        
+                        <!-- File Name Display -->
+                        <div id="fileName" class="text-center mb-3" style="display: none;"></div>
+                        
+                        <!-- Analyze Button -->
+                        <div class="text-center">
+                            <button id="analyzeBtn" class="btn btn-primary btn-lg px-5" onclick="analyzeImage()">
+                                <i class="fas fa-search me-2"></i>Analyze Boat
+                            </button>
+                        </div>
+                        
+                        <!-- New Analysis Button (shown after results) -->
+                        <div id="newAnalysisSection" class="text-center mt-4" style="display: none;">
+                            <button id="newAnalysisBtn" class="btn btn-outline-primary btn-lg px-5" onclick="startNewAnalysis()">
+                                <i class="fas fa-plus-circle me-2"></i>New Analysis
+                            </button>
+                        </div>
+                        
+                        <!-- Loading Indicator -->
+                        <div id="loading" class="loading text-center mt-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Analyzing...</span>
+                            </div>
+                            <p class="mt-2">Analyzing your boat image with AI...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Preprocessing Overlay -->
+<div id="preprocessingOverlay">
+    <div class="preprocessing-content">
+        <div class="preprocessing-spinner"></div>
+        <p class="preprocessing-status">Analysis generating right now...</p>
+    </div>
+</div>
+
+<!-- Custom Error Modal -->
+<div id="errorModal" class="error-modal-overlay" style="display: none;">
+    <div class="error-modal-container">
+        <div class="error-modal-header">
+            <div class="error-modal-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 class="error-modal-title">Image Analysis Error</h3>
+            <button class="error-modal-close" onclick="closeErrorModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="error-modal-body">
+            <p id="errorModalMessage" class="error-modal-message"></p>
+            <div id="errorModalIssues" class="error-modal-issues" style="display: none;">
+                <h4 class="error-modal-issues-title">Issues Found:</h4>
+                <ul id="errorModalIssuesList" class="error-modal-issues-list"></ul>
+            </div>
+            <div id="errorModalRecommendation" class="error-modal-recommendation" style="display: none;">
+                <p id="errorModalRecommendationText"></p>
+            </div>
+        </div>
+        <div class="error-modal-footer">
+            <button class="btn btn-primary" onclick="closeErrorModal()">OK, Got it</button>
+        </div>
+    </div>
+</div>
+
+<!-- Results Section -->
+<section id="results" class="py-5 bg-light" style="display: none;">
+    <div class="container">
+        <!-- Analysis Results -->
+        <div id="analysisResults" class="row">
+            <!-- Analysis will be populated here -->
+        </div>
+        
+        <!-- Similar Boats -->
+        <div id="similarBoats" class="row mt-5">
+            <!-- Similar boats will be populated here -->
+        </div>
+    </div>
+</section>
+
+
+<!-- About Section -->
+<section id="about" class="py-5 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h2 class="mb-4">About boataniQ</h2>
+                <p class="lead">
+                    boataniQ uses cutting-edge AI technology powered by Google's Gemini Flash 2.0 to provide detailed boat analysis from photos, identifying type, brand, model, year, and key specifications.
+                </p>
+                
+                <div class="row mt-5">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-eye fa-3x text-primary mb-3"></i>
+                            <h5>Image Recognition</h5>
+                            <p>Advanced AI analyzes boat photos to identify type, brand, model, and key features.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-database fa-3x text-primary mb-3"></i>
+                            <h5>Comprehensive Database</h5>
+                            <p>Access to 30,000+ boats with detailed specifications, prices, and technical data.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-link fa-3x text-primary mb-3"></i>
+                            <h5>Precise Identification</h5>
+                            <p>Accurate boat identification with detailed specifications and technical analysis.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* Enhanced Visual Effects for Analysis Results */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+.info-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.info-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    border-color: #007bff;
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+}
+
+.progress {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 1s ease-in-out;
+}
+
+.badge {
+    font-size: 1rem !important;
+    padding: 0.5rem 1rem !important;
+}
+
+.display-4 {
+    background: linear-gradient(45deg, #007bff, #28a745);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.shadow-lg {
+    box-shadow: 0 1rem 3rem rgba(0,0,0,0.175) !important;
+}
+
+/* Animation for results appearance */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* Enhanced typography */
+.lh-lg {
+    line-height: 1.8;
+}
+
+.fs-6 {
+    font-size: 1.1rem;
+}
+
+.fs-5 {
+    font-size: 1.25rem;
+}
+
+.fs-4 {
+    font-size: 1.5rem;
+}
+
+/* Custom card borders */
+.border-primary {
+    border-width: 2px !important;
+}
+
+.border-success {
+    border-width: 2px !important;
+}
+
+.border-warning {
+    border-width: 2px !important;
+}
+
+.border-info {
+    border-width: 2px !important;
+}
+
+/* Search Results Styling */
+.boat-info-card {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.boat-info-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    border-color: #007bff;
+}
+
+/* Custom Error Modal Styling */
+.error-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(5px);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.error-modal-container {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+    position: relative;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.error-modal-header {
+    background: linear-gradient(135deg, var(--danger-coral) 0%, #DC2626 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+    border-radius: 20px 20px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+}
+
+.error-modal-icon {
+    font-size: 2rem;
+    background: rgba(255, 255, 255, 0.2);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.error-modal-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.error-modal-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+}
+
+.error-modal-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+.error-modal-body {
+    padding: 2rem;
+}
+
+.error-modal-message {
+    font-size: 1.1rem;
+    color: var(--text-dark);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.error-modal-issues {
+    background: #FFF5F5;
+    border-left: 4px solid var(--danger-coral);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+}
+
+.error-modal-issues-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.error-modal-issues-title::before {
+    content: "⚠️";
+    font-size: 1.2rem;
+}
+
+.error-modal-issues-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.error-modal-issues-list li {
+    padding: 0.75rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    color: var(--text-medium);
+    line-height: 1.5;
+}
+
+.error-modal-issues-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--danger-coral);
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.error-modal-recommendation {
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    border-left: 4px solid var(--primary-ocean);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-top: 1.5rem;
+}
+
+.error-modal-recommendation p {
+    margin: 0;
+    color: var(--text-dark);
+    line-height: 1.6;
+    font-size: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.error-modal-recommendation p::before {
+    content: "💡";
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.error-modal-footer {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid #E5E7EB;
+    display: flex;
+    justify-content: flex-end;
+    background: #F9FAFB;
+    border-radius: 0 0 20px 20px;
+}
+
+.error-modal-footer .btn {
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary-ocean) 0%, var(--primary-ocean-dark) 100%);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.error-modal-footer .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 119, 190, 0.3);
+}
+
+/* Hero Brand Container */
+.hero-brand-container {
+    margin-bottom: 3rem;
+}
+
+.hero-logo-container {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 1.5rem;
+}
+
+.hero-logo {
+    height: 160px;
+    width: auto;
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.3));
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 25px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.hero-logo:hover {
+    transform: scale(1.08) rotate(2deg);
+    filter: drop-shadow(0 12px 24px rgba(0,0,0,0.4));
+}
+
+.hero-title {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-weight: 800;
+    font-size: 4rem;
+    letter-spacing: -2px;
+    text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f0f8ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-subtitle {
+    font-size: 1.3rem;
+    font-weight: 400;
+    line-height: 1.6;
+    opacity: 0.95;
+    max-width: 600px;
+    margin: 0 auto;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Hero Features */
+.hero-features {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+.feature-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1.5rem 2rem;
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 140px;
+}
+
+.feature-item:hover {
+    transform: translateY(-8px);
+    background: rgba(255,255,255,0.15);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary-ocean) 0%, var(--neutral-navy) 100%);
+            color: white;
+            padding: 80px 0;
+        }
+        
+        .hero-logo {
+            text-align: center;
+        }
+        
+        .hero-logo-img {
+            height: 120px;
+            width: auto;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+            transition: all 0.3s ease;
+        }
+        
+        .hero-logo-img:hover {
+            transform: scale(1.05);
+            filter: drop-shadow(0 6px 12px rgba(0,0,0,0.4));
+        }
+        
+        .hero-brand-text {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: -1px;
+        }
+        
+        .hero-description {
+            font-size: 1.25rem;
+            color: rgba(255,255,255,0.9);
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--accent-turquoise) 0%, var(--accent-turquoise-light) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+.feature-item:hover .feature-icon {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+}
+
+.feature-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero-logo {
+        height: 120px;
+        padding: 15px;
+    }
+    
+    .hero-title {
+        font-size: 2.5rem;
+        letter-spacing: -1px;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.1rem;
+    }
+    
+    .hero-features {
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    
+    .feature-item {
+        padding: 1rem 1.5rem;
+        min-width: 120px;
+    }
+    
+    .feature-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+    
+    .feature-text {
+        font-size: 1rem;
+    }
+}
+
+/* Advanced Filter Styling */
+#filtersPanel {
+    border: 1px solid #e0e0e0;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+#filtersPanel .card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 15px 15px 0 0 !important;
+}
+
+#filtersPanel .form-select,
+#filtersPanel .form-control {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+#filtersPanel .form-select:focus,
+#filtersPanel .form-control:focus {
+    border-color: var(--primary-ocean);
+    box-shadow: 0 0 0 0.2rem rgba(0,119,190,0.25);
+    transform: translateY(-1px);
+}
+
+#filtersPanel .form-label {
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+/* Filter Button Styling */
+.btn-outline-primary {
+    border: 2px solid var(--primary-ocean);
+    color: var(--primary-ocean);
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-primary:hover {
+    background: linear-gradient(135deg, var(--primary-ocean) 0%, var(--primary-ocean-dark) 100%);
+    border-color: var(--primary-ocean);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,119,190,0.3);
+}
+
+.btn-outline-danger {
+    border: 2px solid var(--danger-coral);
+    color: var(--danger-coral);
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-danger:hover {
+    background: linear-gradient(135deg, var(--danger-coral) 0%, #DC2626 100%);
+    border-color: var(--danger-coral);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239,68,68,0.3);
+}
+
+/* Filter Panel Animation */
+#filtersPanel {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Range Input Styling */
+#filtersPanel input[type="number"] {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+#filtersPanel input[type="number"]:focus {
+    background: #ffffff;
+    border-color: #007bff;
+}
+
+/* Filter Results Enhancement */
+#searchResults .boat-info-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#searchResults .boat-info-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+/* Range Slider Styling */
+.range-slider {
+    position: relative;
+    margin: 1rem 0;
+}
+
+.range-slider .form-range {
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    border-radius: 10px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.range-slider .form-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, var(--primary-ocean) 0%, var(--primary-ocean-dark) 100%);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,119,190,0.3);
+    transition: all 0.3s ease;
+}
+
+.range-slider .form-range::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0,119,190,0.4);
+}
+
+.range-slider .form-range::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, var(--primary-ocean) 0%, var(--primary-ocean-dark) 100%);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,119,190,0.3);
+    transition: all 0.3s ease;
+}
+
+.range-slider .form-range::-moz-range-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0,119,190,0.4);
+}
+
+.range-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-medium);
+    font-weight: 500;
+}
+
+.range-slider .form-range:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0,119,190,0.25);
+}
+
+/* Filter Badge Styling */
+.badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+}
+
+.bg-primary { background: linear-gradient(135deg, var(--primary-ocean) 0%, var(--primary-ocean-dark) 100%) !important; }
+.bg-success { background: linear-gradient(135deg, var(--success-ocean) 0%, var(--primary-ocean-dark) 100%) !important; }
+.bg-info { background: linear-gradient(135deg, var(--info-ocean) 0%, var(--neutral-navy-light) 100%) !important; }
+.bg-warning { background: linear-gradient(135deg, var(--warning-coral) 0%, var(--accent-turquoise-light) 100%) !important; color: white !important; }
+
+/* Exact Input Field Styling */
+.form-control-sm {
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+    padding: 0.375rem 0.5rem;
+}
+
+.form-control-sm:focus {
+    border-color: var(--primary-ocean);
+    box-shadow: 0 0 0 0.2rem rgba(0,119,190,0.25);
+    transform: translateY(-1px);
+}
+
+.form-control-sm:hover {
+    border-color: var(--primary-ocean);
+}
+
+/* Range Slider + Input Integration */
+.range-slider + .row {
+    margin-top: 0.5rem;
+}
+
+.range-slider + .row .form-control-sm {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.range-slider + .row .form-control-sm:focus {
+    background: #ffffff;
+}
+
+.boat-info-card .card-body {
+    padding: 1.5rem;
+}
+
+.boat-info-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.boat-info-card .card-text {
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+/* Tab Styling */
+.nav-pills .nav-link {
+    border-radius: 0.5rem;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+}
+
+.nav-pills .nav-link.active {
+    background: linear-gradient(135deg, var(--primary-ocean) 0%, var(--primary-ocean-dark) 100%);
+    border-color: var(--primary-ocean);
+}
+
+.nav-pills .nav-link:not(.active) {
+    color: var(--text-medium);
+    background-color: var(--warm-seafoam);
+}
+
+.nav-pills .nav-link:not(.active):hover {
+    color: var(--text-dark);
+    background-color: var(--soft-blue);
+}
+</style>
+
+<script>
+let currentFile = null;
+
+function showLoading() {
+    const loading = document.getElementById('loading');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    if (loading) loading.style.display = 'block';
+    if (analyzeBtn) {
+        analyzeBtn.disabled = true;
+        analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Analyzing...';
+    }
+}
+
+function hideLoading() {
+    const loading = document.getElementById('loading');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    if (loading) loading.style.display = 'none';
+    if (analyzeBtn) {
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i>Analyze Boat';
+    }
+}
+
+// Preprocessing overlay functions
+function showPreprocessingOverlay() {
+    const overlay = document.getElementById('preprocessingOverlay');
+    if (overlay) {
+        overlay.classList.add('show');
+    }
+}
+
+function hidePreprocessingOverlay() {
+    const overlay = document.getElementById('preprocessingOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+    }
+}
+
+// Custom Error Modal Functions
+function showErrorModal(errorData) {
+    const modal = document.getElementById('errorModal');
+    const messageEl = document.getElementById('errorModalMessage');
+    const issuesEl = document.getElementById('errorModalIssues');
+    const issuesListEl = document.getElementById('errorModalIssuesList');
+    const recommendationEl = document.getElementById('errorModalRecommendation');
+    const recommendationTextEl = document.getElementById('errorModalRecommendationText');
+    
+    // Set main error message
+    if (errorData.error) {
+        messageEl.textContent = errorData.error;
+    } else if (errorData.message) {
+        messageEl.textContent = errorData.message;
+    } else {
+        messageEl.textContent = 'An error occurred while processing your request.';
+    }
+    
+    // Show issues if available
+    if (errorData.validation && errorData.validation.issues && errorData.validation.issues.length > 0) {
+        issuesListEl.innerHTML = '';
+        errorData.validation.issues.forEach(issue => {
+            const li = document.createElement('li');
+            li.textContent = issue;
+            issuesListEl.appendChild(li);
+        });
+        issuesEl.style.display = 'block';
+    } else {
+        issuesEl.style.display = 'none';
+    }
+    
+    // Show recommendation if available
+    if (errorData.recommendation) {
+        recommendationTextEl.textContent = errorData.recommendation;
+        recommendationEl.style.display = 'block';
+    } else {
+        recommendationEl.style.display = 'none';
+    }
+    
+    // Show modal
+    modal.style.display = 'flex';
+    
+    // Close on overlay click
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            closeErrorModal();
+        }
+    };
+    
+    // Close on Escape key
+    document.addEventListener('keydown', function escapeHandler(e) {
+        if (e.key === 'Escape') {
+            closeErrorModal();
+            document.removeEventListener('keydown', escapeHandler);
+        }
+    });
+}
+
+function closeErrorModal() {
+    const modal = document.getElementById('errorModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// New Analysis function - resets everything for a new upload
+function startNewAnalysis() {
+    console.log('🔄 [MAIN] Starting new analysis...');
+    
+    // Clear file input
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.value = '';
+        fileInput.disabled = false;
+        fileInput.style.opacity = '1';
+        fileInput.style.cursor = 'pointer';
+    }
+    
+    // Reset analyze button
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    if (analyzeBtn) {
+        analyzeBtn.disabled = false;
+        analyzeBtn.style.opacity = '1';
+        analyzeBtn.style.cursor = 'pointer';
+        analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i>Analyze Boat';
+    }
+    
+    // Hide New Analysis button
+    const newAnalysisSection = document.getElementById('newAnalysisSection');
+    if (newAnalysisSection) {
+        newAnalysisSection.style.display = 'none';
+    }
+    
+    // Clear file name display
+    const fileName = document.getElementById('fileName');
+    if (fileName) {
+        fileName.style.display = 'none';
+        fileName.textContent = '';
+    }
+    
+    // Remove results section
+    const resultsSection = document.getElementById('resultsSection');
+    if (resultsSection) {
+        resultsSection.remove();
+    }
+    
+    // Hide results section if it exists
+    const results = document.getElementById('results');
+    if (results) {
+        results.style.display = 'none';
+    }
+    
+    // Hide Advanced Search results when starting new analysis
+    const sidebarSearchResults = document.getElementById('sidebarSearchResults');
+    if (sidebarSearchResults) {
+        sidebarSearchResults.style.display = 'none';
+    }
+    
+    // Scroll to upload section
+    const uploadSection = document.querySelector('.py-5');
+    if (uploadSection) {
+        uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    console.log('✅ [MAIN] Ready for new analysis');
+}
+
+function analyzeImage() {
+    console.log('🚀 [MAIN] Starting boat analysis...');
+    
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    
+    console.log('📁 [MAIN] File input:', fileInput);
+    console.log('📁 [MAIN] Selected file:', file);
+    
+    if (!file) {
+        console.log('❌ [MAIN] No file selected');
+        showErrorModal({
+            error: 'No image selected',
+            recommendation: 'Please select a boat image file to analyze.'
+        });
+        return;
+    }
+
+    console.log('✅ [MAIN] File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    console.log('⏳ [MAIN] Showing preprocessing overlay...');
+    showPreprocessingOverlay();
+
+    console.log('📤 [MAIN] Sending request to /api/analyze...');
+
+    fetch('/api/analyze', {
+        method: 'POST',
+        body: formData
+    })
+    .then(async response => {
+        console.log('📥 [MAIN] Response received:', response.status, response.statusText);
+        
+        // Try to parse JSON even for error responses (400, 500, etc.)
+        const contentType = response.headers.get('content-type');
+        let data;
+        
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+            // If response is not OK, throw the error data so it can be handled properly
+            if (!response.ok) {
+                throw { ...data, httpStatus: response.status, httpStatusText: response.statusText };
+            }
+        } else {
+            // If not JSON, throw standard error
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+            data = await response.json();
+        }
+        
+        return data;
+    })
+    .then(data => {
+        console.log('📊 [MAIN] Analysis data received:', data);
+        
+        if (data.success) {
+            console.log('✅ [MAIN] Analysis successful, displaying results...');
+            hidePreprocessingOverlay();
+            showResults(data);
+            // Refresh analysis history
+            if (typeof loadAnalysisHistory === 'function') {
+                loadAnalysisHistory();
+            }
+        } else {
+            console.log('❌ [MAIN] Analysis failed:', data.error);
+            hidePreprocessingOverlay();
+            // Show error in custom modal
+            showErrorModal(data);
+        }
+    })
+    .catch(error => {
+        console.log('❌ [MAIN] Request failed:', error);
+        hidePreprocessingOverlay();
+        console.error('Error analyzing boat:', error);
+        
+        // Handle structured error responses (from 400/500 responses with JSON)
+        if (error.error) {
+            showErrorModal(error);
+        } else {
+            showErrorModal({
+                error: 'An error occurred while analyzing the image',
+                message: error.message || 'Unknown error occurred',
+                recommendation: 'Please try again or contact support if the problem persists.'
+            });
+        }
+    });
+}
+
+function showResults(data) {
+    hideLoading();
+    
+    // Hide Advanced Search results when showing analysis results
+    const sidebarSearchResults = document.getElementById('sidebarSearchResults');
+    if (sidebarSearchResults) {
+        sidebarSearchResults.style.display = 'none';
+    }
+    
+    // Lock the upload section - disable file input and analyze button
+    const fileInput = document.getElementById('fileInput');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const newAnalysisSection = document.getElementById('newAnalysisSection');
+    
+    if (fileInput) {
+        fileInput.disabled = true;
+        fileInput.style.opacity = '0.6';
+        fileInput.style.cursor = 'not-allowed';
+    }
+    
+    if (analyzeBtn) {
+        analyzeBtn.disabled = true;
+        analyzeBtn.style.opacity = '0.6';
+        analyzeBtn.style.cursor = 'not-allowed';
+    }
+    
+    // Show New Analysis button
+    if (newAnalysisSection) {
+        newAnalysisSection.style.display = 'block';
+    }
+    
+    // Create results section if it doesn't exist
+    let resultsSection = document.getElementById('resultsSection');
+    if (!resultsSection) {
+        resultsSection = document.createElement('div');
+        resultsSection.id = 'resultsSection';
+        resultsSection.className = 'container mt-5';
+        document.body.appendChild(resultsSection);
+    }
+    
+    // Display analysis results
+    resultsSection.innerHTML = `
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-5 display-4 fw-bold text-primary">
+                    <i class="fas fa-microscope me-3"></i>AI Analysis Results
+                </h1>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Main Analysis Results -->
+            <div class="col-12 mb-5">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-gradient-primary text-white py-4">
+                        <h2 class="mb-0 display-6">
+                            <i class="fas fa-ship me-3"></i>Boat Identification & Analysis
+                        </h2>
+                    </div>
+                    <div class="card-body p-5">
+                        <!-- Primary Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-3 text-center">
+                                <div class="info-card bg-light p-4 rounded-3">
+                                    <i class="fas fa-anchor fa-2x text-primary mb-3"></i>
+                                    <h5 class="fw-bold">Boat Type</h5>
+                                    <span class="badge bg-primary fs-6 px-3 py-2">${data.analysis.boat_type || 'N/A'}</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="info-card bg-light p-4 rounded-3">
+                                    <i class="fas fa-tag fa-2x text-success mb-3"></i>
+                                    <h5 class="fw-bold">Brand</h5>
+                                    <span class="badge bg-success fs-6 px-3 py-2">${data.analysis.brand || 'N/A'}</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="info-card bg-light p-4 rounded-3">
+                                    <i class="fas fa-cog fa-2x text-info mb-3"></i>
+                                    <h5 class="fw-bold">Model</h5>
+                                    <span class="badge bg-info fs-6 px-3 py-2">${data.analysis.model || 'N/A'}</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="info-card bg-light p-4 rounded-3">
+                                    <i class="fas fa-calendar fa-2x text-warning mb-3"></i>
+                                    <h5 class="fw-bold">Year</h5>
+                                    <span class="badge bg-warning fs-6 px-3 py-2">${data.analysis.estimated_year || 'N/A'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Technical Specifications -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card h-100 border-primary">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="mb-0"><i class="fas fa-ruler-combined me-2"></i>Dimensions & Specifications</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>Length:</strong><br>
+                                                <span class="fs-5 text-primary">${data.analysis.length_estimate || 'N/A'}m</span>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Width:</strong><br>
+                                                <span class="fs-5 text-primary">${data.analysis.width_estimate || 'N/A'}m</span>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>Hull Material:</strong><br>
+                                                <span class="fs-6">${data.analysis.hull_material || 'N/A'}</span>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Engine Type:</strong><br>
+                                                <span class="fs-6">${data.analysis.engine_type || 'N/A'}</span>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <strong>Hull Type:</strong><br>
+                                                <span class="fs-6">${data.analysis.hull_type || 'N/A'}</span>
+                                            </div>
+                                            <div class="col-6">
+                                                <strong>Condition:</strong><br>
+                                                <span class="badge bg-success fs-6">${data.analysis.condition || 'N/A'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100 border-success">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0"><i class="fas fa-dollar-sign me-2"></i>Market Information</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="text-center mb-3">
+                                            <strong class="fs-5">Estimated Value</strong><br>
+                                            <span class="fs-4 text-success fw-bold">${data.analysis.price_estimate || 'N/A'}</span>
+                                        </div>
+                                        <hr>
+                                        <div class="text-center mb-3">
+                                            <strong class="fs-5">Analysis Confidence</strong><br>
+                                            <div class="progress" style="height: 25px;">
+                                                <div class="progress-bar bg-warning" role="progressbar" style="width: ${data.analysis.confidence || 0}%">
+                                                    ${data.analysis.confidence || 0}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <div class="text-center">
+                                            <strong class="fs-5">Model Line</strong><br>
+                                            <span class="fs-6 text-info">${data.analysis.model_line || 'N/A'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Detailed Description -->
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Comprehensive Analysis</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="fs-6 lh-lg">${data.analysis.detailed_description || 'No detailed description available'}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Additional Analysis Sections -->
+        ${data.analysis.design_analysis ? `
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h4 class="mb-0"><i class="fas fa-drafting-compass me-2"></i>Design Analysis</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-ship me-2"></i>Hull Design</h6>
+                                <p class="text-muted">${data.analysis.design_analysis.hull_design || 'N/A'}</p>
+                                
+                                <h6><i class="fas fa-home me-2"></i>Cabin Layout</h6>
+                                <p class="text-muted">${data.analysis.design_analysis.cabin_layout || 'N/A'}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-sun me-2"></i>Deck Features</h6>
+                                <p class="text-muted">${data.analysis.design_analysis.deck_features || 'N/A'}</p>
+                                
+                                <h6><i class="fas fa-wind me-2"></i>Aerodynamics</h6>
+                                <p class="text-muted">${data.analysis.design_analysis.aerodynamics || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        ` : ''}
+        
+        ${data.analysis.market_positioning ? `
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow border-success">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0"><i class="fas fa-chart-line me-2"></i>Market Positioning</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-target me-2"></i>Target Market</h6>
+                                <p class="text-muted">${data.analysis.market_positioning.target_market || 'N/A'}</p>
+                                
+                                <h6><i class="fas fa-star me-2"></i>Unique Selling Points</h6>
+                                <p class="text-muted">${data.analysis.market_positioning.unique_selling_points || 'N/A'}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-users me-2"></i>Competitors</h6>
+                                <p class="text-muted">${data.analysis.market_positioning.competitors || 'N/A'}</p>
+                                
+                                <h6><i class="fas fa-map-marked-alt me-2"></i>Ideal Use Cases</h6>
+                                <p class="text-muted">${data.analysis.market_positioning.ideal_use_cases || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        ` : ''}
+        
+        <div class="row">
+            
+            <!-- Premium Features Notice -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-crown me-2"></i>Premium Features</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <i class="fas fa-lock fa-3x text-warning mb-3"></i>
+                        <h6>Unlock Advanced Features</h6>
+                        <p class="text-muted mb-3">
+                            Get access to similar boats matching, location analysis, and interactive maps with our premium membership.
+                        </p>
+                        <button class="btn btn-warning" disabled>
+                            <i class="fas fa-crown me-2"></i>Coming Soon
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Scroll to results
+    resultsSection.scrollIntoView({ behavior: 'smooth' });
+}
+
+function updateAnalysisDisplay(data) {
+    // Hide Advanced Search results when showing analysis results
+    const sidebarSearchResults = document.getElementById('sidebarSearchResults');
+    if (sidebarSearchResults) {
+        sidebarSearchResults.style.display = 'none';
+    }
+    
+    const analysisResults = document.getElementById('analysisResults');
+    const similarBoats = document.getElementById('similarBoats');
+    
+    // Display analysis results
+    if (analysisResults) {
+        analysisResults.innerHTML = `
+            <div class="col-12">
+                <div class="card analysis-card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-microscope me-2"></i>AI Analysis Results
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-ship me-2"></i>Boat Type</h6>
+                                <p class="fw-bold">${data.analysis.boat_type || 'Unknown'}</p>
+                                
+                                <h6><i class="fas fa-tag me-2"></i>Brand</h6>
+                                <p class="fw-bold">${data.analysis.brand || 'Unknown'}</p>
+                                
+                                <h6><i class="fas fa-cog me-2"></i>Model</h6>
+                                <p class="fw-bold">${data.analysis.model || 'Unknown'}</p>
+                                
+                                <h6><i class="fas fa-calendar me-2"></i>Estimated Year</h6>
+                                <p class="fw-bold">${data.analysis.estimated_year || 'Unknown'}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-ruler me-2"></i>Dimensions</h6>
+                                <p class="fw-bold">${data.analysis.length_estimate || 'Unknown'} x ${data.analysis.width_estimate || 'Unknown'}</p>
+                                
+                                <h6><i class="fas fa-cogs me-2"></i>Engine Type</h6>
+                                <p class="fw-bold">${data.analysis.engine_type || 'Unknown'}</p>
+                                
+                                <h6><i class="fas fa-dollar-sign me-2"></i>Price Estimate</h6>
+                                <p class="fw-bold">${data.analysis.price_estimate || 'Unknown'}</p>
+                                
+                                <h6><i class="fas fa-chart-line me-2"></i>Confidence</h6>
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" style="width: ${data.analysis.confidence || 0}%"></div>
+                                </div>
+                                <small class="text-muted">${data.analysis.confidence || 0}%</small>
+                            </div>
+                        </div>
+                        
+                        ${data.analysis.key_features && data.analysis.key_features.length > 0 ? `
+                        <div class="mt-3">
+                            <h6><i class="fas fa-star me-2"></i>Key Features</h6>
+                            <div>
+                                ${data.analysis.key_features.map(feature => `<span class="feature-badge">${feature}</span>`).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${data.analysis.detailed_description ? `
+                        <div class="mt-3">
+                            <h6><i class="fas fa-file-alt me-2"></i>Detailed Analysis</h6>
+                            <p class="text-muted">${data.analysis.detailed_description}</p>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Display similar boats
+    if (similarBoats && data.similar_boats && data.similar_boats.length > 0) {
+        similarBoats.innerHTML = `
+            <div class="col-12">
+                <h3 class="mb-4">
+                    <i class="fas fa-ship me-2"></i>Similar Boats (${data.total_similar})
+                </h3>
+                <div class="row">
+                    ${data.similar_boats.map(boat => `
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card boat-card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">${boat.title}</h6>
+                                    <p class="card-text">
+                                        <strong>Price:</strong> ${boat.price}<br>
+                                        <strong>Dimensions:</strong> ${boat.dimensions}<br>
+                                        <strong>Engine:</strong> ${boat.engine_performance}<br>
+                                        <strong>Year:</strong> ${boat.year_built}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    } else if (similarBoats) {
+        similarBoats.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No similar boats found in our database. Try uploading a different image or check our search feature.
+                </div>
+            </div>
+        `;
+    }
+}
+
+
+// Load database stats on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 [FRONTEND] DOM Content Loaded - Initializing...');
+    
+    // Initialize file upload handlers
+    initializeFileUpload();
+    
+    // Load stats (optional, don't block if it fails)
+    fetch('/api/stats')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Database stats:', data.stats);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading stats:', error);
+    });
+    
+    console.log('✅ [FRONTEND] Initialization complete');
+    
+    // Check if analyze button exists
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    if (analyzeBtn) {
+        console.log('🔘 [FRONTEND] Analyze button found and ready');
+        console.log('🔘 [FRONTEND] analyzeImage function available:', typeof analyzeImage);
+    } else {
+        console.log('❌ [FRONTEND] Analyze button not found!');
+    }
+});
+
+function initializeFileUpload() {
+    console.log('🔧 [MAIN] Initializing file upload handlers...');
+    
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+    
+    console.log('🔧 [MAIN] Elements found:', {
+        fileInput: !!fileInput,
+        fileName: !!fileName
+    });
+    
+    // File input change handler
+    fileInput.addEventListener('change', function(e) {
+        console.log('📁 [MAIN] File input changed');
+        const file = e.target.files[0];
+        console.log('📁 [MAIN] Selected file:', file);
+        
+        if (file) {
+            console.log('✅ [MAIN] File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
+            fileName.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    File Selected: ${file.name}
+                </div>
+            `;
+            fileName.style.display = 'block';
+        } else {
+            console.log('❌ [MAIN] No file selected');
+        }
+    });
+}
+
+// Text Search Functions
+// Global variables for filter system
+let filterOptions = {};
+let currentFilters = {};
+
+// Load filter options on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadFilterOptions();
+});
+
+function loadFilterOptions() {
+    console.log('🔧 [FILTERS] Loading filter options...');
+    
+    fetch('/api/filter-options')
+        .then(response => response.json())
+        .then(data => {
+            console.log('📊 [FILTERS] Filter options loaded:', data);
+            filterOptions = data;
+            populateFilterDropdowns();
+        })
+        .catch(error => {
+            console.error('❌ [FILTERS] Error loading filter options:', error);
+        });
+}
+
+function populateFilterDropdowns() {
+    // Set up range sliders with actual data ranges
+    if (filterOptions.year_range) {
+        const yearSlider = document.getElementById('yearSlider');
+        yearSlider.min = filterOptions.year_range.min;
+        yearSlider.max = filterOptions.year_range.max;
+        yearSlider.value = Math.round((filterOptions.year_range.min + filterOptions.year_range.max) / 2);
+        updateYearRange();
+    }
+    
+    // Set up length slider (max 20m)
+    if (filterOptions.length_range) {
+        const lengthSlider = document.getElementById('lengthSlider');
+        lengthSlider.min = Math.max(0, filterOptions.length_range.min);
+        lengthSlider.max = Math.min(20, filterOptions.length_range.max);
+        lengthSlider.value = Math.round((lengthSlider.min + lengthSlider.max) / 2);
+        updateLengthRange();
+    }
+    
+    // Set up width slider (max 20m)
+    if (filterOptions.width_range) {
+        const widthSlider = document.getElementById('widthSlider');
+        widthSlider.min = Math.max(0, filterOptions.width_range.min);
+        widthSlider.max = Math.min(20, filterOptions.width_range.max);
+        widthSlider.value = Math.round((widthSlider.min + widthSlider.max) / 2);
+        updateWidthRange();
+    }
+    
+    // Set up slider event listeners
+    setupSliderListeners();
+}
+
+function setupSliderListeners() {
+    // Year slider
+    document.getElementById('yearSlider').addEventListener('input', updateYearRange);
+    
+    // Price slider
+    document.getElementById('priceSlider').addEventListener('input', updatePriceRange);
+    
+    // Length slider
+    document.getElementById('lengthSlider').addEventListener('input', updateLengthRange);
+    
+    // Width slider
+    document.getElementById('widthSlider').addEventListener('input', updateWidthRange);
+}
+
+function updateYearRange() {
+    const slider = document.getElementById('yearSlider');
+    const value = parseInt(slider.value);
+    const min = parseInt(slider.min);
+    const max = parseInt(slider.max);
+    
+    document.getElementById('yearRange').textContent = `${min} - ${value}`;
+}
+
+function updatePriceRange() {
+    const slider = document.getElementById('priceSlider');
+    const value = parseInt(slider.value);
+    const min = parseInt(slider.min);
+    const max = parseInt(slider.max);
+    
+    const formatPrice = (price) => {
+        if (price >= 1000000) return `€${(price/1000000).toFixed(1)}M`;
+        if (price >= 1000) return `€${(price/1000).toFixed(0)}K`;
+        return `€${price}`;
+    };
+    
+    document.getElementById('priceRange').textContent = `${formatPrice(min)} - ${formatPrice(value)}`;
+}
+
+function updateLengthRange() {
+    const slider = document.getElementById('lengthSlider');
+    const value = parseFloat(slider.value);
+    const min = parseFloat(slider.min);
+    const max = parseFloat(slider.max);
+    
+    document.getElementById('lengthRange').textContent = `${min}m - ${value.toFixed(1)}m`;
+}
+
+function updateWidthRange() {
+    const slider = document.getElementById('widthSlider');
+    const value = parseFloat(slider.value);
+    const min = parseFloat(slider.min);
+    const max = parseFloat(slider.max);
+    
+    document.getElementById('widthRange').textContent = `${min}m - ${value.toFixed(1)}m`;
+}
+
+function toggleFilters() {
+    const filtersPanel = document.getElementById('filtersPanel');
+    const toggleBtn = event.target;
+    
+    if (filtersPanel.style.display === 'none') {
+        filtersPanel.style.display = 'block';
+        toggleBtn.innerHTML = '<i class="fas fa-filter me-1"></i>Hide Filters';
+        toggleBtn.classList.remove('btn-outline-primary');
+        toggleBtn.classList.add('btn-primary');
+    } else {
+        filtersPanel.style.display = 'none';
+        toggleBtn.innerHTML = '<i class="fas fa-filter me-1"></i>Advanced Filters';
+        toggleBtn.classList.remove('btn-primary');
+        toggleBtn.classList.add('btn-outline-primary');
+    }
+}
+
+function clearFilters() {
+    // Reset all sliders to default values
+    if (filterOptions.year_range) {
+        const yearSlider = document.getElementById('yearSlider');
+        yearSlider.value = Math.round((filterOptions.year_range.min + filterOptions.year_range.max) / 2);
+        updateYearRange();
+    }
+    
+    const priceSlider = document.getElementById('priceSlider');
+    priceSlider.value = 500000;
+    updatePriceRange();
+    
+    // Reset length slider (max 20m)
+    if (filterOptions.length_range) {
+        const lengthSlider = document.getElementById('lengthSlider');
+        const min = Math.max(0, filterOptions.length_range.min);
+        const max = Math.min(20, filterOptions.length_range.max);
+        lengthSlider.value = Math.round((min + max) / 2);
+        updateLengthRange();
+    }
+    
+    // Reset width slider (max 20m)
+    if (filterOptions.width_range) {
+        const widthSlider = document.getElementById('widthSlider');
+        const min = Math.max(0, filterOptions.width_range.min);
+        const max = Math.min(20, filterOptions.width_range.max);
+        widthSlider.value = Math.round((min + max) / 2);
+        updateWidthRange();
+    }
+    
+    // Clear all input fields
+    document.getElementById('yearMin').value = '';
+    document.getElementById('yearMax').value = '';
+    document.getElementById('priceMin').value = '';
+    document.getElementById('priceMax').value = '';
+    document.getElementById('lengthMin').value = '';
+    document.getElementById('lengthMax').value = '';
+    document.getElementById('widthMin').value = '';
+    document.getElementById('widthMax').value = '';
+    
+    // Clear search input
+    document.getElementById('searchInput').value = '';
+    
+    // Hide results
+    document.getElementById('searchResults').style.display = 'none';
+    
+    console.log('🧹 [FILTERS] All filters cleared');
+}
+
+function searchBoatsWithFilters() {
+    console.log('🔍 [FILTERED SEARCH] Starting filtered boat search...');
+    
+    const searchInput = document.getElementById('searchInput');
+    const query = searchInput.value.trim();
+    
+    // Collect filter values from both sliders and exact inputs
+    const yearSlider = document.getElementById('yearSlider');
+    const priceSlider = document.getElementById('priceSlider');
+    const lengthSlider = document.getElementById('lengthSlider');
+    const widthSlider = document.getElementById('widthSlider');
+    
+    // Get exact input values
+    const yearMinInput = document.getElementById('yearMin').value;
+    const yearMaxInput = document.getElementById('yearMax').value;
+    const priceMinInput = document.getElementById('priceMin').value;
+    const priceMaxInput = document.getElementById('priceMax').value;
+    const lengthMinInput = document.getElementById('lengthMin').value;
+    const lengthMaxInput = document.getElementById('lengthMax').value;
+    const widthMinInput = document.getElementById('widthMin').value;
+    const widthMaxInput = document.getElementById('widthMax').value;
+    
+    const filters = {
+        // Use exact inputs if provided, otherwise use slider values
+        year_min: yearMinInput ? parseInt(yearMinInput) : parseInt(yearSlider.min),
+        year_max: yearMaxInput ? parseInt(yearMaxInput) : parseInt(yearSlider.value),
+        price_min: priceMinInput ? parseInt(priceMinInput) : parseInt(priceSlider.min),
+        price_max: priceMaxInput ? parseInt(priceMaxInput) : parseInt(priceSlider.value),
+        length_min: lengthMinInput ? parseFloat(lengthMinInput) : parseFloat(lengthSlider.min),
+        length_max: lengthMaxInput ? parseFloat(lengthMaxInput) : parseFloat(lengthSlider.value),
+        width_min: widthMinInput ? parseFloat(widthMinInput) : parseFloat(widthSlider.min),
+        width_max: widthMaxInput ? parseFloat(widthMaxInput) : parseFloat(widthSlider.value)
+    };
+    
+    // Remove null/empty values
+    Object.keys(filters).forEach(key => {
+        if (filters[key] === null || filters[key] === '') {
+            delete filters[key];
+        }
+    });
+    
+    console.log('🔍 [FILTERED SEARCH] Query:', query);
+    console.log('🔧 [FILTERED SEARCH] Filters:', filters);
+    
+    // Show loading
+    showSearchLoading();
+    
+    // Hide previous results
+    const searchResults = document.getElementById('searchResults');
+    if (searchResults) {
+        searchResults.style.display = 'none';
+    }
+    
+    // Make API request
+    fetch('/api/search-filtered', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            keywords: query,
+            filters: filters,
+            limit: 20
+        })
+    })
+    .then(response => {
+        console.log('📥 [FILTERED SEARCH] Response received:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('📊 [FILTERED SEARCH] Search data received:', data);
+        if (data.results) {
+            console.log('✅ [FILTERED SEARCH] Search successful, displaying results...');
+            displaySearchResults(data.results, query);
+        } else {
+            console.log('❌ [FILTERED SEARCH] Search failed:', data.error);
+            hideSearchLoading();
+            showErrorModal({
+                error: 'Search failed',
+                message: data.error || 'Unable to search boats',
+                recommendation: 'Please try again with different search terms.'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('❌ [FILTERED SEARCH] Search error:', error);
+        hideSearchLoading();
+        showErrorModal({
+            error: 'Search failed',
+            message: error.message || 'An error occurred while searching',
+            recommendation: 'Please check your connection and try again.'
+        });
+    });
+}
+
+function searchBoats() {
+    console.log('🔍 [SEARCH] Starting boat search...');
+    
+    const searchInput = document.getElementById('searchInput');
+    const query = searchInput.value.trim();
+    
+    if (!query) {
+        showErrorModal({
+            error: 'No search keywords',
+            recommendation: 'Please enter boat brand, model, or other keywords to search.'
+        });
+        return;
+    }
+    
+    console.log('🔍 [SEARCH] Search query:', query);
+    
+    // Show loading
+    showSearchLoading();
+    
+    // Hide previous results
+    const searchResults = document.getElementById('searchResults');
+    if (searchResults) {
+        searchResults.style.display = 'none';
+    }
+    
+    // Make API request
+    fetch(`/api/search?q=${encodeURIComponent(query)}&limit=20`)
+        .then(response => {
+            console.log('📥 [SEARCH] Response received:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            // Try to parse JSON with error handling
+            try {
+                return response.json();
+            } catch (jsonError) {
+                console.error('JSON parsing error:', jsonError);
+                throw new Error('Invalid JSON response from server. Please try again.');
+            }
+        })
+        .then(data => {
+            console.log('📊 [SEARCH] Search data received:', data);
+            if (data.success) {
+                console.log('✅ [SEARCH] Search successful, displaying results...');
+                displaySearchResults(data.results, query);
+            } else {
+                console.log('❌ [SEARCH] Search failed:', data.error);
+                hideSearchLoading();
+                showErrorModal({
+                error: 'Search failed',
+                message: data.error || 'Unable to search boats',
+                recommendation: 'Please try again with different search terms.'
+            });
+            }
+        })
+        .catch(error => {
+            console.log('❌ [SEARCH] Search request failed:', error);
+            hideSearchLoading();
+            console.error('Error searching boats:', error);
+            
+            // Better error handling
+            let errorMessage = 'An error occurred while searching: ';
+            if (error.message.includes('JSON')) {
+                errorMessage += 'Invalid data format received from server. Please try again.';
+            } else if (error.message.includes('Network')) {
+                errorMessage += 'Network error. Please check your connection.';
+            } else {
+                errorMessage += error.message;
+            }
+            
+            showErrorModal({
+                error: 'Search error',
+                message: errorMessage,
+                recommendation: 'Please try again or contact support if the problem persists.'
+            });
+        });
+}
+
+function showSearchLoading() {
+    const searchLoading = document.getElementById('searchLoading');
+    if (searchLoading) {
+        searchLoading.style.display = 'block';
+    }
+}
+
+function hideSearchLoading() {
+    const searchLoading = document.getElementById('searchLoading');
+    if (searchLoading) {
+        searchLoading.style.display = 'none';
+    }
+}
+
+function displaySearchResults(boats, query) {
+    hideSearchLoading();
+    
+    const searchResults = document.getElementById('searchResults');
+    const searchCount = document.getElementById('searchCount');
+    const searchResultsList = document.getElementById('searchResultsList');
+    
+    if (!searchResults || !searchCount || !searchResultsList) {
+        console.error('Search result elements not found');
+        return;
+    }
+    
+    // Update count
+    searchCount.textContent = boats.length;
+    
+    if (boats.length === 0) {
+        searchResultsList.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No boats found for "${query}". Try different keywords or check spelling.
+                </div>
+            </div>
+        `;
+    } else {
+        // Display search results
+        searchResultsList.innerHTML = boats.map(boat => `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 boat-info-card">
+                    <div class="card-body">
+                        <h6 class="card-title text-primary">${boat.title || 'Unknown Boat'}</h6>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                <strong>Brand:</strong> ${boat.brand || 'N/A'}<br>
+                                <strong>Model:</strong> ${boat.model || 'N/A'}<br>
+                                <strong>Type:</strong> ${boat.boat_type || 'N/A'}<br>
+                                <strong>Dimensions:</strong> ${boat.dimensions || 'N/A'}<br>
+                                <strong>Year:</strong> ${boat.year_built || 'N/A'}<br>
+                                <strong>Price:</strong> ${boat.price || 'N/A'}
+                            </small>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Show results section
+    searchResults.style.display = 'block';
+    
+    // Scroll to results
+    searchResults.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Note: analyzeBoatFromSearch function removed - search results now show information only
+</script>
+{% endblock %}

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoatanIQ - Interactive Boat Map</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary-ocean: #0077BE;
+            --primary-ocean-dark: #005A8B;
+            --accent-turquoise: #40E0D0;
+        }
+        
+        #map {
+            height: 70vh;
+            width: 100%;
+            position: relative;
+        }
+        .boat-popup {
+            max-width: 300px;
+        }
+        .boat-info {
+            font-size: 0.9em;
+        }
+        .search-controls {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .boat-marker {
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .stats-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        
+        /* Coming Soon Overlay */
+        .coming-soon-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .coming-soon-content {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f8ff 100%);
+            border-radius: 30px;
+            padding: 3rem 4rem;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.5s ease;
+            border: 3px solid var(--primary-ocean);
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .coming-soon-icon {
+            font-size: 5rem;
+            margin-bottom: 1.5rem;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+        
+        .coming-soon-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-ocean);
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary-ocean) 0%, var(--accent-turquoise) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .coming-soon-message {
+            font-size: 1.2rem;
+            color: #475569;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+        
+        .coming-soon-features {
+            background: rgba(0, 119, 190, 0.1);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+        
+        .coming-soon-features h4 {
+            color: var(--primary-ocean);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .coming-soon-features ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .coming-soon-features li {
+            padding: 0.75rem 0;
+            padding-left: 2rem;
+            position: relative;
+            color: #475569;
+        }
+        
+        .coming-soon-features li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--primary-ocean);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        .coming-soon-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary-ocean) 0%, var(--primary-ocean-dark) 100%);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            margin-top: 1rem;
+            box-shadow: 0 4px 15px rgba(0, 119, 190, 0.3);
+        }
+        
+        /* Disable all interactive elements */
+        .disabled-overlay {
+            pointer-events: none;
+            opacity: 0.6;
+            filter: grayscale(30%);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">🚤 BoatanIQ</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">Home</a>
+                <a class="nav-link active" href="/map">Map</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Coming Soon Overlay -->
+    <div id="comingSoonOverlay" class="coming-soon-overlay">
+        <div class="coming-soon-content">
+            <div class="coming-soon-icon">🗺️</div>
+            <h1 class="coming-soon-title">Interactive Map</h1>
+            <p class="coming-soon-message">
+                This feature is coming soon! We're working on adding location data for all boats in our database.
+            </p>
+            
+            <div class="coming-soon-features">
+                <h4>What to Expect:</h4>
+                <ul>
+                    <li>Interactive map with boat locations worldwide</li>
+                    <li>Search boats by location and radius</li>
+                    <li>Visual markers for different boat types and prices</li>
+                    <li>Location-based boat discovery</li>
+                    <li>Real-time location statistics</li>
+                </ul>
+            </div>
+            
+            <p class="coming-soon-message" style="font-size: 1rem; margin-top: 1.5rem;">
+                Stay tuned for updates! In the meantime, you can use our <strong>Advanced Search</strong> feature to find boats.
+            </p>
+            
+            <a href="/" class="btn btn-primary btn-lg mt-3" style="background: linear-gradient(135deg, var(--primary-ocean) 0%, var(--primary-ocean-dark) 100%); border: none; padding: 0.75rem 2rem; border-radius: 25px;">
+                <i class="fas fa-arrow-left me-2"></i>Back to Home
+            </a>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-3 disabled-overlay">
+        <div class="row">
+            <div class="col-md-8">
+                <!-- Search Controls -->
+                <div class="search-controls">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="locationSearch" class="form-label">Search Location:</label>
+                            <input type="text" class="form-control" id="locationSearch" placeholder="e.g., Monaco, Miami, Barcelona">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="radiusSlider" class="form-label">Radius: <span id="radiusValue">50</span> km</label>
+                            <input type="range" class="form-range" id="radiusSlider" min="10" max="200" value="50">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="boatLimit" class="form-label">Max Boats:</label>
+                            <select class="form-select" id="boatLimit">
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="500">500</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button class="btn btn-primary w-100" onclick="searchBoats()">Search</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map -->
+                <div id="map"></div>
+
+                <!-- Location Analysis -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>🔍 Analyze Boat Image Location</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="file" class="form-control" id="locationImageFile" accept="image/*">
+                            </div>
+                            <div class="col-md-6">
+                                <button class="btn btn-success" onclick="analyzeImageLocation()">Analyze Location</button>
+                            </div>
+                        </div>
+                        <div id="locationAnalysisResult" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- Statistics Panel -->
+                <div class="stats-panel">
+                    <h5>📊 Location Statistics</h5>
+                    <div id="locationStats">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Results -->
+                <div class="stats-panel">
+                    <h5>🚤 Search Results</h5>
+                    <div id="searchResults">
+                        <p class="text-muted">Use the search controls to find boats near a location.</p>
+                    </div>
+                </div>
+
+                <!-- Map Legend -->
+                <div class="stats-panel">
+                    <h5>🗺️ Map Legend</h5>
+                    <div class="mb-2">
+                        <span class="badge bg-danger me-2">🔴</span> Expensive Boats (>$1M)
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-warning me-2">🟠</span> Mid-Range Boats ($500K-$1M)
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-success me-2">🟢</span> Affordable Boats ($100K-$500K)
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-secondary me-2">⚫</span> Budget Boats (<$100K)
+                    </div>
+                    <hr>
+                    <div class="mb-2">
+                        <span class="badge bg-info me-2">🔵</span> Search Results
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-warning me-2">🟡</span> Detected Locations
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-danger me-2">🔴</span> Search Center
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let boatMarkers = [];
+        let searchMarkers = [];
+        let detectedMarkers = [];
+        let centerMarker = null;
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([43.7384, 7.4246], 6); // Center on Monaco
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Load initial boat data
+            loadBoatsForMap();
+            loadLocationStats();
+        }
+
+        // Load boats for map visualization
+        function loadBoatsForMap() {
+            console.log('🗺️ [MAP] Loading boats for map visualization...');
+            fetch('/api/map/boats?limit=1000')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log(`🗺️ [MAP] Loaded ${data.boats.length} boats for map`);
+                        addBoatMarkers(data.boats);
+                    } else {
+                        console.log('❌ [MAP] Failed to load boats:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ [MAP] Error loading boats:', error);
+                });
+        }
+
+        // Add boat markers to map
+        function addBoatMarkers(boats) {
+            console.log('🎨 [MAP] Adding boat markers to map...');
+            // Clear existing boat markers
+            boatMarkers.forEach(marker => map.removeLayer(marker));
+            boatMarkers = [];
+
+            boats.forEach(boat => {
+                if (boat.location_lat && boat.location_lon) {
+                    // Determine color based on boat type/price
+                    let color = '#007bff'; // Default blue
+                    let radius = 6;
+                    
+                    if (boat.price) {
+                        const price = parseFloat(boat.price.replace(/[^\d.]/g, ''));
+                        if (price > 1000000) {
+                            color = '#dc3545'; // Red for expensive boats
+                            radius = 8;
+                        } else if (price > 500000) {
+                            color = '#fd7e14'; // Orange for mid-range boats
+                            radius = 7;
+                        } else if (price > 100000) {
+                            color = '#28a745'; // Green for affordable boats
+                            radius = 6;
+                        } else {
+                            color = '#6c757d'; // Gray for very cheap boats
+                            radius = 5;
+                        }
+                    }
+                    
+                    const marker = L.circleMarker([boat.location_lat, boat.location_lon], {
+                        radius: radius,
+                        fillColor: color,
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 0.8,
+                        fillOpacity: 0.7
+                    }).addTo(map);
+
+                    const popupContent = `
+                        <div class="boat-popup">
+                            <h6>${boat.title || 'Unknown Boat'}</h6>
+                            <div class="boat-info">
+                                <p><strong>Price:</strong> ${boat.price || 'N/A'}</p>
+                                <p><strong>Location:</strong> ${boat.location_name || 'Unknown'}</p>
+                                <p><strong>Country:</strong> ${boat.location_country || 'Unknown'}</p>
+                                <p><strong>Year:</strong> ${boat.year_built || 'N/A'}</p>
+                                <p><strong>Dimensions:</strong> ${boat.dimensions || 'N/A'}</p>
+                            </div>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupContent);
+                    boatMarkers.push(marker);
+                }
+            });
+        }
+
+        // Search boats by location
+        function searchBoats() {
+            const locationName = document.getElementById('locationSearch').value;
+            const radius = document.getElementById('radiusSlider').value;
+            const limit = document.getElementById('boatLimit').value;
+
+            if (!locationName.trim()) {
+                alert('Please enter a location name');
+                return;
+            }
+
+            // Clear previous search results
+            clearSearchResults();
+
+            fetch(`/api/map/location/${encodeURIComponent(locationName)}?radius=${radius}&limit=${limit}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displaySearchResults(data.boats, locationName, radius);
+                        addSearchMarkers(data.boats, locationName);
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching boats:', error);
+                    alert('Error searching boats');
+                });
+        }
+
+        // Add search result markers
+        function addSearchMarkers(boats, locationName) {
+            // Clear existing search markers
+            searchMarkers.forEach(marker => map.removeLayer(marker));
+            searchMarkers = [];
+
+            boats.forEach(boat => {
+                if (boat.location_lat && boat.location_lon) {
+                    const marker = L.circleMarker([boat.location_lat, boat.location_lon], {
+                        radius: 8,
+                        fillColor: '#28a745',
+                        color: '#fff',
+                        weight: 3,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+
+                    const popupContent = `
+                        <div class="boat-popup">
+                            <h6>${boat.title || 'Unknown Boat'}</h6>
+                            <div class="boat-info">
+                                <p><strong>Price:</strong> ${boat.price || 'N/A'}</p>
+                                <p><strong>Location:</strong> ${boat.location_name || 'Unknown'}</p>
+                                <p><strong>Distance:</strong> ${boat.distance_km || 'N/A'} km</p>
+                                <p><strong>Year:</strong> ${boat.year_built || 'N/A'}</p>
+                            </div>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupContent);
+                    searchMarkers.push(marker);
+                }
+            });
+
+            // Add center marker
+            if (boats.length > 0) {
+                const centerLat = boats[0].location_lat;
+                const centerLon = boats[0].location_lon;
+                
+                if (centerMarker) {
+                    map.removeLayer(centerMarker);
+                }
+                
+                centerMarker = L.marker([centerLat, centerLon], {
+                    icon: L.divIcon({
+                        className: 'custom-div-icon',
+                        html: '<div style="background-color: red; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })
+                }).addTo(map);
+
+                centerMarker.bindPopup(`<strong>Search Center: ${locationName}</strong>`);
+            }
+        }
+
+        // Display search results
+        function displaySearchResults(boats, locationName, radius) {
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (boats.length === 0) {
+                resultsDiv.innerHTML = `<p class="text-muted">No boats found near ${locationName} within ${radius} km.</p>`;
+                return;
+            }
+
+            let html = `<h6>Found ${boats.length} boats near ${locationName}</h6>`;
+            html += '<div class="list-group">';
+            
+            boats.slice(0, 10).forEach(boat => {
+                html += `
+                    <div class="list-group-item">
+                        <h6 class="mb-1">${boat.title || 'Unknown Boat'}</h6>
+                        <p class="mb-1"><strong>Price:</strong> ${boat.price || 'N/A'}</p>
+                        <p class="mb-1"><strong>Location:</strong> ${boat.location_name || 'Unknown'}</p>
+                        <small class="text-muted">Distance: ${boat.distance_km || 'N/A'} km</small>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            if (boats.length > 10) {
+                html += `<p class="text-muted mt-2">... and ${boats.length - 10} more boats</p>`;
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // Clear search results
+        function clearSearchResults() {
+            searchMarkers.forEach(marker => map.removeLayer(marker));
+            searchMarkers = [];
+            
+            if (centerMarker) {
+                map.removeLayer(centerMarker);
+                centerMarker = null;
+            }
+            
+            document.getElementById('searchResults').innerHTML = '<p class="text-muted">Use the search controls to find boats near a location.</p>';
+        }
+
+        // Analyze image location
+        function analyzeImageLocation() {
+            console.log('🗺️ [MAP] Starting location analysis...');
+            
+            const fileInput = document.getElementById('locationImageFile');
+            const file = fileInput.files[0];
+            
+            console.log('📁 [MAP] File input:', fileInput);
+            console.log('📁 [MAP] Selected file:', file);
+            
+            if (!file) {
+                console.log('❌ [MAP] No file selected');
+                alert('Please select an image file');
+                return;
+            }
+
+            console.log('✅ [MAP] File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const resultDiv = document.getElementById('locationAnalysisResult');
+            resultDiv.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div></div>';
+
+            console.log('📤 [MAP] Sending request to /api/map/analyze-location...');
+
+            fetch('/api/map/analyze-location', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                console.log('📥 [MAP] Response received:', response.status, response.statusText);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('📊 [MAP] Location analysis data received:', data);
+                if (data.success) {
+                    console.log('✅ [MAP] Location analysis successful, displaying results...');
+                    displayLocationAnalysis(data);
+                } else {
+                    console.log('❌ [MAP] Location analysis failed:', data.error);
+                    resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${data.error}</div>`;
+                }
+            })
+            .catch(error => {
+                console.log('❌ [MAP] Request failed:', error);
+                console.error('Error analyzing location:', error);
+                resultDiv.innerHTML = `<div class="alert alert-danger">Error analyzing image location: ${error.message}</div>`;
+            });
+        }
+
+        // Display location analysis results
+        function displayLocationAnalysis(data) {
+            const resultDiv = document.getElementById('locationAnalysisResult');
+            
+            let html = '<div class="alert alert-success">';
+            html += `<h6>Detected Locations (${data.confidence} confidence)</h6>`;
+            html += '<div class="row">';
+            
+            data.detected_locations.forEach(location => {
+                html += `
+                    <div class="col-md-6 mb-2">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>${location.name}</h6>
+                                <p class="mb-1">${location.country}</p>
+                                <small class="text-muted">${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            html += '</div>';
+            
+            if (data.nearby_boats && data.nearby_boats.length > 0) {
+                html += '<div class="alert alert-info">';
+                html += `<h6>Nearby Boats (${data.nearby_boats.length} found)</h6>`;
+                html += '<div class="list-group">';
+                
+                data.nearby_boats.slice(0, 5).forEach(boat => {
+                    html += `
+                        <div class="list-group-item">
+                            <h6 class="mb-1">${boat.title || 'Unknown Boat'}</h6>
+                            <p class="mb-1"><strong>Price:</strong> ${boat.price || 'N/A'}</p>
+                            <small class="text-muted">Distance: ${boat.distance_km || 'N/A'} km</small>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            }
+            
+            resultDiv.innerHTML = html;
+            
+            // Add detected location markers
+            addDetectedLocationMarkers(data.detected_locations);
+        }
+
+        // Add detected location markers
+        function addDetectedLocationMarkers(locations) {
+            // Clear existing detected markers
+            detectedMarkers.forEach(marker => map.removeLayer(marker));
+            detectedMarkers = [];
+
+            locations.forEach(location => {
+                const marker = L.marker([location.lat, location.lon], {
+                    icon: L.divIcon({
+                        className: 'custom-div-icon',
+                        html: '<div style="background-color: #ffc107; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>',
+                        iconSize: [15, 15],
+                        iconAnchor: [7, 7]
+                    })
+                }).addTo(map);
+
+                marker.bindPopup(`<strong>Detected: ${location.name}</strong><br>${location.country}`);
+                detectedMarkers.push(marker);
+            });
+        }
+
+        // Load location statistics
+        function loadLocationStats() {
+            fetch('/api/map/stats')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayLocationStats(data.location_stats);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading location stats:', error);
+                });
+        }
+
+        // Display location statistics
+        function displayLocationStats(stats) {
+            const statsDiv = document.getElementById('locationStats');
+            
+            let html = '';
+            
+            if (stats.boats_by_country) {
+                html += '<h6>Boats by Country</h6>';
+                html += '<div class="list-group">';
+                
+                Object.entries(stats.boats_by_country).slice(0, 5).forEach(([country, count]) => {
+                    html += `
+                        <div class="list-group-item d-flex justify-content-between">
+                            <span>${country}</span>
+                            <span class="badge bg-primary">${count}</span>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+            
+            if (stats.top_locations) {
+                html += '<h6 class="mt-3">Top Locations</h6>';
+                html += '<div class="list-group">';
+                
+                Object.entries(stats.top_locations).slice(0, 5).forEach(([location, count]) => {
+                    html += `
+                        <div class="list-group-item d-flex justify-content-between">
+                            <span>${location}</span>
+                            <span class="badge bg-success">${count}</span>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+            
+            statsDiv.innerHTML = html;
+        }
+
+        // Update radius display
+        document.getElementById('radiusSlider').addEventListener('input', function() {
+            document.getElementById('radiusValue').textContent = this.value;
+        });
+
+        // Disable all interactive functionality
+        function disableMapFeatures() {
+            // Disable all buttons
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.style.cursor = 'not-allowed';
+            });
+            
+            // Disable all inputs
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.disabled = true;
+                input.style.cursor = 'not-allowed';
+            });
+            
+            // Prevent map initialization
+            console.log('🗺️ [MAP] Map features disabled - Coming Soon mode');
+        }
+        
+        // Initialize map when page loads (but disabled)
+        document.addEventListener('DOMContentLoaded', function() {
+            disableMapFeatures();
+            // Don't initialize the map - keep it disabled
+            // initMap(); // Commented out to disable functionality
+        });
+    </script>
+</body>
+</html>
