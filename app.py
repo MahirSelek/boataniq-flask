@@ -98,11 +98,24 @@ def initialize_app():
         csv_path = 'all_boats_data.csv'
         json_dir = 'json_boat24' if os.path.exists('json_boat24') else None  # Make JSON dir optional
         
-        if os.path.exists(csv_path):
-            boat_db = BoatDatabase(csv_path, json_dir)
-            print(f"Database initialized with {len(boat_db.boats_df)} boats")
+        print(f"🔍 [INIT] Checking for database file: {csv_path}")
+        print(f"   CSV exists: {os.path.exists(csv_path)}")
+        if csv_path and os.path.exists(csv_path):
+            try:
+                boat_db = BoatDatabase(csv_path, json_dir)
+                if boat_db and boat_db.boats_df is not None:
+                    print(f"✅ Database initialized with {len(boat_db.boats_df)} boats")
+                else:
+                    print(f"❌ Database initialized but boats_df is None")
+                    boat_db = None
+            except Exception as db_error:
+                print(f"❌ Database initialization failed: {db_error}")
+                import traceback
+                traceback.print_exc()
+                boat_db = None
         else:
-            print(f"Warning: CSV file {csv_path} not found")
+            print(f"❌ Warning: CSV file {csv_path} not found at current directory: {os.getcwd()}")
+            print(f"   Files in current directory: {os.listdir('.')[:10]}")
             boat_db = None
         
         # Initialize AI analyzer - try Vertex AI first, then fallback to regular Gemini
@@ -114,10 +127,30 @@ def initialize_app():
             gcp_credentials_json = os.getenv('GCP_CREDENTIALS_JSON')
             credentials_path = os.getenv('GCP_CREDENTIALS_PATH', 'static-chiller-472906-f3-4ee4a099f2f1.json')
             
+            print(f"🔍 [INIT] Checking for GCP credentials...")
+            print(f"   GCP_CREDENTIALS_JSON exists: {bool(gcp_credentials_json)}")
+            print(f"   Credentials path exists: {os.path.exists(credentials_path) if credentials_path else False}")
+            
             if gcp_credentials_json:
-                # Use credentials from environment variable (JSON string)
-                ai_analyzer = BoatVertexAIAnalyzer(credentials_json=gcp_credentials_json)
-                print("✅ Vertex AI analyzer initialized successfully from environment variable (Gemini Flash 2.0)")
+                # Clean the JSON string (remove any extra whitespace/newlines)
+                gcp_credentials_json = gcp_credentials_json.strip()
+                # Try to parse it to validate
+                try:
+                    import json
+                    json.loads(gcp_credentials_json)  # Validate JSON
+                    # Use credentials from environment variable (JSON string)
+                    ai_analyzer = BoatVertexAIAnalyzer(credentials_json=gcp_credentials_json)
+                    print("✅ Vertex AI analyzer initialized successfully from environment variable (Gemini Flash 2.0)")
+                except json.JSONDecodeError as je:
+                    print(f"❌ [INIT] Invalid JSON in GCP_CREDENTIALS_JSON: {je}")
+                    print("   Trying file path...")
+                    if os.path.exists(credentials_path):
+                        ai_analyzer = BoatVertexAIAnalyzer(credentials_path=credentials_path)
+                        print("✅ Vertex AI analyzer initialized successfully from file (Gemini Flash 2.0)")
+                except Exception as ve:
+                    print(f"❌ [INIT] Vertex AI initialization error: {ve}")
+                    import traceback
+                    traceback.print_exc()
             elif os.path.exists(credentials_path):
                 # Use credentials from file (local development)
                 ai_analyzer = BoatVertexAIAnalyzer(credentials_path=credentials_path)
@@ -126,6 +159,8 @@ def initialize_app():
                 print("⚠️  Vertex AI credentials not found, trying regular Gemini...")
         except Exception as e:
             print(f"⚠️  Vertex AI initialization failed: {e}")
+            import traceback
+            traceback.print_exc()
             print("   Trying regular Gemini API...")
         
         # Fallback to regular Gemini API
@@ -580,11 +615,21 @@ def analyze_image():
 
 @app.route('/health')
 def health_check():
-    """Health check endpoint"""
+    """Health check endpoint with detailed diagnostics"""
     status = {
         'database': boat_db is not None,
         'ai_analyzer': ai_analyzer is not None,
         'upload_folder': os.path.exists(app.config['UPLOAD_FOLDER'])
+    }
+    
+    # Detailed diagnostics
+    diagnostics = {
+        'current_directory': os.getcwd(),
+        'csv_file_exists': os.path.exists('all_boats_data.csv'),
+        'csv_file_size': os.path.getsize('all_boats_data.csv') if os.path.exists('all_boats_data.csv') else 0,
+        'database_boats_count': len(boat_db.boats_df) if boat_db and boat_db.boats_df is not None else 0,
+        'gcp_credentials_env_set': bool(os.getenv('GCP_CREDENTIALS_JSON')),
+        'gcp_credentials_file_exists': os.path.exists('static-chiller-472906-f3-4ee4a099f2f1.json'),
     }
     
     # Get AI model info if available
@@ -596,8 +641,9 @@ def health_check():
             pass
     
     return jsonify({
-        'status': 'healthy' if all(status.values()) else 'degraded',
+        'status': 'healthy' if all([status['database'], status['ai_analyzer']]) else 'degraded',
         'components': status,
+        'diagnostics': diagnostics,
         'ai_model': model_info
     })
 
@@ -1038,7 +1084,20 @@ def get_data_insights_summary():
     """Get executive summary statistics"""
     try:
         if boat_db is None:
-            return jsonify({'error': 'Database not available'}), 500
+            return jsonify({
+                'error': 'Database not available',
+                'message': 'Boat database not initialized. Please check server logs.',
+                'diagnostics': {
+                    'csv_exists': os.path.exists('all_boats_data.csv'),
+                    'current_dir': os.getcwd()
+                }
+            }), 500
+        
+        if boat_db.boats_df is None or len(boat_db.boats_df) == 0:
+            return jsonify({
+                'error': 'Database empty',
+                'message': 'Boat database is initialized but contains no data.'
+            }), 500
         
         df = boat_db.boats_df
         total_boats = len(df)
@@ -1120,8 +1179,11 @@ def get_data_insights_summary():
 def get_price_distribution():
     """Get price distribution data for histogram"""
     try:
-        if boat_db is None:
-            return jsonify({'error': 'Database not available'}), 500
+        if boat_db is None or boat_db.boats_df is None or len(boat_db.boats_df) == 0:
+            return jsonify({
+                'error': 'Database not available',
+                'message': 'Boat database not initialized or empty.'
+            }), 500
         
         df = boat_db.boats_df
         
@@ -1161,8 +1223,8 @@ def get_price_distribution():
 def get_year_distribution():
     """Get year distribution data"""
     try:
-        if boat_db is None:
-            return jsonify({'error': 'Database not available'}), 500
+        if boat_db is None or boat_db.boats_df is None or len(boat_db.boats_df) == 0:
+            return jsonify({'error': 'Database not available', 'message': 'Boat database not initialized or empty.'}), 500
         
         df = boat_db.boats_df
         years = pd.to_numeric(df['year_built'], errors='coerce').dropna()
@@ -1194,8 +1256,8 @@ def get_year_distribution():
 def get_brand_stats():
     """Get brand statistics"""
     try:
-        if boat_db is None:
-            return jsonify({'error': 'Database not available'}), 500
+        if boat_db is None or boat_db.boats_df is None or len(boat_db.boats_df) == 0:
+            return jsonify({'error': 'Database not available', 'message': 'Boat database not initialized or empty.'}), 500
         
         df = boat_db.boats_df
         
@@ -1247,8 +1309,8 @@ def get_brand_stats():
 def get_size_distribution():
     """Get boat size (length) distribution"""
     try:
-        if boat_db is None:
-            return jsonify({'error': 'Database not available'}), 500
+        if boat_db is None or boat_db.boats_df is None or len(boat_db.boats_df) == 0:
+            return jsonify({'error': 'Database not available', 'message': 'Boat database not initialized or empty.'}), 500
         
         df = boat_db.boats_df
         
@@ -1291,8 +1353,8 @@ def get_size_distribution():
 def get_market_trends():
     """Get market trends over time"""
     try:
-        if boat_db is None:
-            return jsonify({'error': 'Database not available'}), 500
+        if boat_db is None or boat_db.boats_df is None or len(boat_db.boats_df) == 0:
+            return jsonify({'error': 'Database not available', 'message': 'Boat database not initialized or empty.'}), 500
         
         df = boat_db.boats_df
         
